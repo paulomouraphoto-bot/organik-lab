@@ -138,7 +138,14 @@ body.running .colon i{animation:blink 1s steps(1) infinite}
 .dial .track{stroke:#26272a}
 .dial .arc{stroke:var(--accent);transition:stroke .3s}
 .dial .notch{fill:var(--accent);transition:fill .3s}
-.hint{position:absolute;left:0;right:0;bottom:-24px;text-align:center;font-size:12px;color:var(--muted);letter-spacing:.04em}
+.dial-wrap{margin-bottom:56px}
+.dial-step{position:absolute;left:0;right:0;bottom:-58px;display:flex;align-items:center;justify-content:space-between;gap:8px}
+.dial-step .hint{font-size:12px;color:var(--muted);letter-spacing:.04em;text-align:center}
+.step{width:46px;height:46px;border-radius:50%;border:1px solid #34353a;background:#25262a;cursor:pointer;
+  display:grid;place-items:center;font-family:var(--f-flap);font-weight:600;font-size:26px;line-height:1;padding:0;
+  touch-action:manipulation;transition:transform .08s,background .2s}
+.step:hover{background:#2c2d31}
+.step:active{transform:scale(.94)}
 
 .side{display:flex;flex-direction:column;gap:12px;min-width:0}
 .btn{
@@ -188,6 +195,7 @@ body[data-look="minimal"] .dial .knob-cap{fill:var(--flap);stroke:transparent}
 body[data-look="minimal"] .dial .track{stroke-width:2}
 body[data-look="minimal"] .dial .arc{stroke-width:2}
 body[data-look="minimal"] .dots i{width:8px;height:8px}
+body[data-look="minimal"] .step{background:transparent;border-color:var(--panel-edge)}
 
 @media (max-width:560px){
   .controls{grid-template-columns:1fr;gap:40px}
@@ -223,7 +231,11 @@ body[data-look="minimal"] .dots i{width:8px;height:8px}
     <div class="dial-wrap">
       <svg class="dial" id="dial" viewBox="0 0 240 240" role="slider" tabindex="0"
            aria-label="Set minutes" aria-valuemin="1" aria-valuemax="60" aria-valuenow="25"></svg>
-      <div class="hint">Turn the dial · arrow keys work too</div>
+      <div class="dial-step">
+        <button class="step" id="minus" aria-label="One minute less">−</button>
+        <span class="hint">Turn the dial</span>
+        <button class="step" id="plus" aria-label="One minute more">+</button>
+      </div>
     </div>
     <div class="side">
       <button class="btn primary" id="go">Start</button>
@@ -415,7 +427,10 @@ body[data-look="minimal"] .dots i{width:8px;height:8px}
     const min = Math.round(drag.acc / 6);
     if (min * 60 !== state.remaining) setMinutes(min);
   });
-  const endDrag = () => { drag = null; svg.classList.remove('dragging'); };
+  const endDrag = e => {
+    if (drag && e.type === 'pointerup' && typeof navigator.vibrate !== 'function') haptic();
+    drag = null; svg.classList.remove('dragging');
+  };
   svg.addEventListener('pointerup', endDrag);
   svg.addEventListener('pointercancel', endDrag);
   svg.addEventListener('wheel', e => {
@@ -427,6 +442,10 @@ body[data-look="minimal"] .dots i{width:8px;height:8px}
     const map = { ArrowUp: 1, ArrowRight: 1, ArrowDown: -1, ArrowLeft: -1, PageUp: 5, PageDown: -5 };
     if (e.key in map) { e.preventDefault(); sfx.unlock(); setMinutes(cur + map[e.key]); }
   });
+
+  const stepBy = n => { sfx.unlock(); setMinutes(Math.ceil(state.remaining / 60) + n); };
+  $('#minus').addEventListener('click', () => stepBy(-1));
+  $('#plus').addEventListener('click', () => stepBy(1));
 
   /* ---------- haptics ---------- */
   // Android: Vibration API. iPhone (iOS 18+): toggling a native switch gives a system haptic tick.
@@ -544,8 +563,9 @@ body[data-look="minimal"] .dots i{width:8px;height:8px}
   }
 
   /* ---------- wiring ---------- */
-  $('#go').addEventListener('click', () => { sfx.unlock(); state.running ? stop() : start(); });
+  $('#go').addEventListener('click', () => { haptic(); sfx.unlock(); state.running ? stop() : start(); });
   $('#reset').addEventListener('click', () => {
+    haptic();
     if (state.running) { state.running = false; clearInterval(loop); document.body.classList.remove('running'); }
     state.remaining = state.durations[state.mode] * 60;
     $('#go').textContent = 'Start';
@@ -553,8 +573,8 @@ body[data-look="minimal"] .dots i{width:8px;height:8px}
   });
   const soundBtn = $('#sound');
   const renderSound = () => { soundBtn.setAttribute('aria-pressed', state.sound); soundBtn.textContent = state.sound ? 'Sound on' : 'Sound off'; };
-  soundBtn.addEventListener('click', () => { state.sound = !state.sound; store.set('sfp-sound', state.sound); sfx.unlock(); renderSound(); });
-  document.querySelectorAll('.mode').forEach(b => b.addEventListener('click', () => { setMode(b.dataset.mode); }));
+  soundBtn.addEventListener('click', () => { haptic(); state.sound = !state.sound; store.set('sfp-sound', state.sound); sfx.unlock(); renderSound(); });
+  document.querySelectorAll('.mode').forEach(b => b.addEventListener('click', () => { haptic(); setMode(b.dataset.mode); }));
   document.addEventListener('keydown', e => {
     if (e.code === 'Space' && !['BUTTON', 'INPUT'].includes(document.activeElement?.tagName)) {
       e.preventDefault(); sfx.unlock(); state.running ? stop() : start();
@@ -572,7 +592,7 @@ body[data-look="minimal"] .dots i{width:8px;height:8px}
   const lookBox = $('#look');
   const applyLook = minimal => { document.body.dataset.look = minimal ? 'minimal' : 'classic'; lookBox.checked = minimal; };
   applyLook(store.get('sfp-look', 'classic') === 'minimal');
-  lookBox.addEventListener('change', () => { applyLook(lookBox.checked); store.set('sfp-look', lookBox.checked ? 'minimal' : 'classic'); });
+  lookBox.addEventListener('change', () => { haptic(); applyLook(lookBox.checked); store.set('sfp-look', lookBox.checked ? 'minimal' : 'classic'); });
 
   document.body.dataset.mode = state.mode;
   renderSound(); renderModes(); renderStatus(); renderTime();
