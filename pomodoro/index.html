@@ -50,6 +50,29 @@ button{font:inherit;color:inherit}
   display:flex;flex-direction:column;gap:clamp(18px,3.5vw,28px);
 }
 
+/* profile switch: which board is showing */
+.profiles{display:flex;gap:4px;padding:4px;background:var(--housing);border:1px solid var(--panel-edge);border-radius:10px;align-self:flex-start;max-width:100%}
+.profile{background:transparent;border:0;border-radius:7px;padding:7px 14px;cursor:pointer;
+  font-family:var(--f-flap);font-weight:600;font-size:14px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.profile:hover{color:var(--ink)}
+.profile[aria-selected="true"]{background:var(--flap);color:var(--ink)}
+
+/* task strip for Kids and Work boards */
+.tasks{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(100px,1fr);gap:8px;overflow-x:auto;padding:4px 2px 8px;margin:-4px -2px -8px;scrollbar-width:thin}
+.task{--c:var(--amber);position:relative;display:flex;flex-direction:column;align-items:center;gap:6px;
+  padding:12px 8px 10px;border-radius:14px;cursor:pointer;
+  background:var(--flap-lo);border:2px solid transparent;color:var(--ink);
+  transition:border-color .2s,background .2s,transform .1s;min-width:0}
+.task:hover{background:var(--flap)}
+.task:active{transform:scale(.97)}
+.task[aria-pressed="true"]{border-color:var(--c);background:color-mix(in srgb,var(--c) 12%,var(--flap-lo))}
+.task svg{width:44px;height:44px;color:var(--c);flex:none}
+.task .t-name{font-family:var(--f-flap);font-weight:600;font-size:15px;letter-spacing:.06em;text-transform:uppercase;line-height:1.1;text-align:center}
+.task .t-min{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+.task.done svg,.task.done .t-name{opacity:.45}
+.task.done::after{content:"";position:absolute;top:6px;right:6px;width:20px;height:20px;border-radius:50%;
+  background:var(--c) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Cpath d='M5 10.5l3.2 3L15 6.5' fill='none' stroke='%23141517' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center/100% no-repeat}
+
 /* mode row, styled like a board header */
 .modes{display:flex;gap:6px;flex-wrap:wrap}
 .mode{
@@ -66,6 +89,16 @@ button{font:inherit;color:inherit}
 
 /* board */
 .board{display:flex;flex-direction:column;align-items:center;gap:10px}
+.label-row{display:flex;align-items:center;justify-content:center;gap:10px;max-width:100%}
+.word{--h:clamp(28px,7.2vw,46px);display:flex;gap:clamp(2px,.5vw,4px)}
+.word .flap{border-radius:4px;box-shadow:0 3px 6px rgba(0,0,0,.4)}
+.word .top,.word .leaf-top{border-radius:4px 4px 0 0}
+.word .bottom,.word .leaf-bottom{border-radius:0 0 4px 4px}
+.word .flap::before{display:none}
+.word .flap::after{height:1px;margin-top:0}
+.label-icon{width:clamp(34px,8.5vw,54px);height:clamp(34px,8.5vw,54px);color:var(--accent);flex:none;transition:color .3s}
+.label-icon:empty{display:none}
+.label-icon svg{width:100%;height:100%}
 .flaps{
   --h:clamp(92px,25vw,168px);
   display:flex;align-items:center;justify-content:center;
@@ -126,6 +159,10 @@ body.running .colon i{animation:blink 1s steps(1) infinite}
 .dots{display:flex;gap:7px;align-items:center}
 .dots i{width:10px;height:10px;border-radius:50%;border:1.5px solid #4a4a4c;transition:background .3s,border-color .3s}
 .dots i.on{background:var(--amber);border-color:var(--amber)}
+.dots i[style].on{background:var(--c);border-color:var(--c)}
+.status-right{display:flex;align-items:center;gap:14px}
+.linkbtn{background:none;border:0;padding:4px 0;cursor:pointer;color:var(--muted);font:inherit;letter-spacing:inherit;text-transform:inherit;text-decoration:underline;text-underline-offset:3px}
+.linkbtn:hover{color:var(--ink)}
 
 /* controls */
 .controls{display:grid;grid-template-columns:auto 1fr;gap:clamp(16px,4vw,36px);align-items:center}
@@ -196,6 +233,10 @@ body[data-look="minimal"] .dial .track{stroke-width:2}
 body[data-look="minimal"] .dial .arc{stroke-width:2}
 body[data-look="minimal"] .dots i{width:8px;height:8px}
 body[data-look="minimal"] .step{background:transparent;border-color:var(--panel-edge)}
+body[data-look="minimal"] .word .flap{box-shadow:none}
+body[data-look="minimal"] .task{background:transparent;border-color:var(--panel-edge);border-width:1px}
+body[data-look="minimal"] .task[aria-pressed="true"]{background:transparent;border-color:var(--c)}
+body[data-look="minimal"] .profiles{background:transparent}
 
 @media (max-width:560px){
   .controls{grid-template-columns:1fr;gap:40px}
@@ -203,13 +244,13 @@ body[data-look="minimal"] .step{background:transparent;border-color:var(--panel-
   .mode .len{display:none}
 }
 /* panic: last 10 seconds, digits take the accent colour */
-body.panic .flap{color:var(--accent);transition:color .3s}
+body.panic #flaps .flap{color:var(--accent);transition:color .3s}
 /* ringing: board flashes at 00:00 */
-body.ringing .flap{animation:ring .5s steps(1) infinite;color:var(--accent)}
+body.ringing #flaps .flap{animation:ring .5s steps(1) infinite;color:var(--accent)}
 @keyframes ring{50%{opacity:.35}}
 
 @media (prefers-reduced-motion:reduce){
-  body.ringing .flap{animation:none}
+  body.ringing #flaps .flap{animation:none}
   .flap.flipping .leaf-top,.flap.flipping .leaf-bottom{animation:none}
   body.running .colon i{animation:none}
 }
@@ -217,13 +258,20 @@ body.ringing .flap{animation:ring .5s steps(1) infinite;color:var(--accent)}
 </head>
 <body>
 <main class="device">
-  <div class="modes" role="group" aria-label="Session type">
+  <div class="profiles" role="tablist" aria-label="Board">
+    <button class="profile" role="tab" data-profile="pomodoro">Pomodoro</button>
+    <button class="profile" role="tab" data-profile="kids">Kids</button>
+    <button class="profile" role="tab" data-profile="work">Work</button>
+  </div>
+  <div class="tasks" id="tasks" role="group" aria-label="Tasks" hidden></div>
+  <div class="modes" id="modes" role="group" aria-label="Session type">
     <button class="mode" id="m-focus" data-mode="focus" aria-pressed="true">Focus<span class="len"></span></button>
     <button class="mode" id="m-short" data-mode="short" aria-pressed="false">Short break<span class="len"></span></button>
     <button class="mode" id="m-long" data-mode="long" aria-pressed="false">Long break<span class="len"></span></button>
   </div>
 
   <section class="board" aria-live="off">
+    <div class="label-row"><span class="label-icon" id="labelIcon" aria-hidden="true"></span><div class="word" id="word" aria-live="polite"></div></div>
     <div class="flaps" id="flaps" role="timer" aria-label="Time remaining">
       <div class="flap" data-i="0"></div>
       <div class="flap" data-i="1"></div>
@@ -259,7 +307,10 @@ body.ringing .flap{animation:ring .5s steps(1) infinite;color:var(--accent)}
 
   <div class="status">
     <span id="statusText">Now boarding <b>Focus</b></span>
-    <span class="dots" aria-label="Focus rounds completed"><i></i><i></i><i></i><i></i></span>
+    <span class="status-right">
+      <span class="dots" id="dots" aria-label="Progress"><i></i><i></i><i></i><i></i></span>
+      <button class="linkbtn" id="resetList" hidden>Start over</button>
+    </span>
   </div>
 </main>
 
@@ -271,10 +322,47 @@ body.ringing .flap{animation:ring .5s steps(1) infinite;color:var(--accent)}
     set(k, v){ try { localStorage.setItem(k, JSON.stringify(v)); } catch {} }
   };
 
-  const LABEL = { focus: 'Focus', short: 'Short break', long: 'Long break' };
+  /* ---------- boards and tasks ---------- */
+  // Kids icons are filled shapes; work icons are line drawings. All drawn on a 48-unit grid.
+  const ICON = {
+    lego: '<svg viewBox="0 0 48 48"><rect x="13" y="12" width="9" height="8" rx="2.5" fill="currentColor"/><rect x="26" y="12" width="9" height="8" rx="2.5" fill="currentColor"/><rect x="7" y="18" width="34" height="20" rx="4" fill="currentColor"/><rect x="11" y="23" width="26" height="3" rx="1.5" fill="#141517" opacity=".18"/></svg>',
+    pyjamas: '<svg viewBox="0 0 48 48"><path d="M29 7a16 16 0 1 0 12 26A13 13 0 0 1 29 7z" fill="currentColor"/><circle cx="36" cy="12" r="2.4" fill="currentColor"/><circle cx="41" cy="20" r="1.6" fill="currentColor"/><circle cx="19" cy="25" r="1.8" fill="#141517" opacity=".25"/><circle cx="24" cy="33" r="1.4" fill="#141517" opacity=".25"/></svg>',
+    teeth: '<svg viewBox="0 0 48 48"><rect x="4" y="29" width="28" height="7" rx="3.5" transform="rotate(-20 18 32)" fill="currentColor"/><rect x="28" y="17" width="15" height="9" rx="3" transform="rotate(-20 35 21)" fill="currentColor"/><g stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M30 14l-1.8-5"/><path d="M34.5 12.4l-1.8-5"/><path d="M39 10.8l-1.8-5"/></g><circle cx="11" cy="14" r="4" fill="none" stroke="currentColor" stroke-width="2.2"/><circle cx="19" cy="9" r="2.4" fill="none" stroke="currentColor" stroke-width="2"/></svg>',
+    breakfast: '<svg viewBox="0 0 48 48"><path d="M6 24h36a18 18 0 0 1-36 0z" fill="currentColor"/><rect x="15" y="40" width="18" height="3.5" rx="1.75" fill="currentColor"/><g fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M17 18c-3-3 3-5 0-9"/><path d="M24 18c-3-3 3-5 0-9"/><path d="M31 18c-3-3 3-5 0-9"/></g></svg>',
+    dressed: '<svg viewBox="0 0 48 48"><path d="M17 8l-11 7 5 8 5-3v20a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V20l5 3 5-8-11-7c-1.2 3.4-4 5.5-7 5.5S18.2 11.4 17 8z" fill="currentColor"/><circle cx="24" cy="27" r="3.2" fill="#141517" opacity=".2"/></svg>',
+    focus: '<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="3"><circle cx="24" cy="24" r="17"/><circle cx="24" cy="24" r="9"/><circle cx="24" cy="24" r="2" fill="currentColor"/></svg>',
+    email: '<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="3" stroke-linejoin="round"><rect x="6" y="12" width="36" height="25" rx="3"/><path d="M7 14l17 13 17-13"/></svg>',
+    admin: '<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="3" stroke-linejoin="round"><path d="M6 15a3 3 0 0 1 3-3h10l4 4h16a3 3 0 0 1 3 3v16a3 3 0 0 1-3 3H9a3 3 0 0 1-3-3z"/><path d="M6 21h36"/></svg>',
+    call: '<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="3" stroke-linejoin="round"><path d="M9 10h30a3 3 0 0 1 3 3v16a3 3 0 0 1-3 3H22l-8 7v-7H9a3 3 0 0 1-3-3V13a3 3 0 0 1 3-3z"/><path d="M15 19h18M15 25h11" stroke-linecap="round"/></svg>',
+    review: '<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="3" stroke-linejoin="round"><path d="M31 8l9 9-21 21H10v-9z"/><path d="M26 13l9 9"/></svg>'
+  };
+  const TASKS = {
+    focus: { label: 'Focus', board: 'FOCUS', min: 25 },
+    short: { label: 'Short break', board: 'SHORT BREAK', min: 5 },
+    long:  { label: 'Long break', board: 'LONG BREAK', min: 15 },
+    'k-lego':      { label: 'Tidy Lego',   board: 'TIDY LEGO',   min: 10, color: '#ff7a5c', icon: 'lego' },
+    'k-pyjamas':   { label: 'Pyjamas on',  board: 'PYJAMAS ON',  min: 5,  color: '#a98cf5', icon: 'pyjamas' },
+    'k-teeth':     { label: 'Brush teeth', board: 'BRUSH TEETH', min: 3,  color: '#5cc8e8', icon: 'teeth' },
+    'k-breakfast': { label: 'Breakfast',   board: 'BREAKFAST',   min: 15, color: '#f4b63f', icon: 'breakfast' },
+    'k-dressed':   { label: 'Get dressed', board: 'GET DRESSED', min: 5,  color: '#7bd389', icon: 'dressed' },
+    'w-deep':   { label: 'Deep work', board: 'DEEP WORK', min: 50, color: '#f4b63f', icon: 'focus' },
+    'w-email':  { label: 'Emails',    board: 'EMAILS',    min: 15, color: '#62c7a8', icon: 'email' },
+    'w-admin':  { label: 'Admin',     board: 'ADMIN',     min: 20, color: '#8fb0d9', icon: 'admin' },
+    'w-call':   { label: 'Call prep', board: 'CALL PREP', min: 10, color: '#e9a36b', icon: 'call' },
+    'w-review': { label: 'Review',    board: 'REVIEW',    min: 25, color: '#a98cf5', icon: 'review' }
+  };
+  const PROFILES = {
+    pomodoro: { keys: ['focus', 'short', 'long'], note: 'Four focus rounds, then a long break. Space starts and pauses.' },
+    kids: { keys: ['k-lego', 'k-pyjamas', 'k-teeth', 'k-breakfast', 'k-dressed'], note: 'Tap a job, then Start. Each finished job gets a tick.', allDone: 'WELL DONE', allDoneMsg: 'Every job done. Brilliant work!' },
+    work: { keys: ['w-deep', 'w-email', 'w-admin', 'w-call', 'w-review'], note: 'Pick a task, set the time, Start. Finished tasks get a tick.', allDone: 'ALL CLEAR', allDoneMsg: 'List cleared. Nice work.' }
+  };
+  const LABEL = new Proxy({}, { get: (_, k) => TASKS[k]?.label || '' });
+  const today = () => new Date().toDateString();
   const state = {
     mode: 'focus',
-    durations: Object.assign({ focus: 25, short: 5, long: 15 }, store.get('sfp-durations', {})),
+    profile: PROFILES[store.get('sfp-profile', 'pomodoro')] ? store.get('sfp-profile', 'pomodoro') : 'pomodoro',
+    durations: Object.assign(Object.fromEntries(Object.entries(TASKS).map(([k, t]) => [k, t.min])), store.get('sfp-durations', {})),
+    ticked: (() => { const d = store.get('sfp-ticked', null); return d && d.date === today() ? d.keys : []; })(),
     running: false,
     endAt: 0,
     remaining: 0,
@@ -289,16 +377,38 @@ body.ringing .flap{animation:ring .5s steps(1) infinite;color:var(--accent)}
   const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   /* ---------- split-flap digits ---------- */
-  const flaps = [...document.querySelectorAll('.flap')].map(el => {
+  const makeFlap = el => {
     el.innerHTML =
       '<div class="half top"><span></span></div>' +
       '<div class="half bottom"><span></span></div>' +
       '<div class="half leaf-top"><span></span></div>' +
       '<div class="half leaf-bottom"><span></span></div>';
     const [top, bottom, lt, lb] = [...el.querySelectorAll('span')];
-    const f = { el, top, bottom, lt, lb, value: null, timer: 0 };
-    return f;
+    return { el, top, bottom, lt, lb, value: null, timer: 0 };
+  };
+  const flaps = [...document.querySelectorAll('#flaps .flap')].map(makeFlap);
+  const WORD_LEN = 11;
+  const wordEl = $('#word');
+  const wordFlaps = Array.from({ length: WORD_LEN }, () => {
+    const d = document.createElement('div'); d.className = 'flap'; wordEl.appendChild(d); return makeFlap(d);
   });
+  let wordTimers = [];
+  function renderWord(text){
+    text = text.toUpperCase().slice(0, WORD_LEN);
+    const pad = Math.floor((WORD_LEN - text.length) / 2);
+    const cells = (' '.repeat(pad) + text).padEnd(WORD_LEN, ' ').split('').map(c => c === ' ' ? '\u00a0' : c);
+    wordEl.setAttribute('aria-label', text);
+    wordTimers.forEach(clearTimeout); wordTimers = [];
+    let n = 0;
+    cells.forEach((c, i) => {
+      const f = wordFlaps[i];
+      if (f.value === c) return;
+      if (f.value === null) { setDigit(f, c); return; }
+      // ripple left to right like a real board updating
+      wordTimers.push(setTimeout(() => setDigit(f, c), i * 45));
+      if (n++ < 6) sfx.flap(i * 0.045);
+    });
+  }
 
   function settle(f){
     clearTimeout(f.timer);
@@ -612,6 +722,24 @@ body.ringing .flap{animation:ring .5s steps(1) infinite;color:var(--accent)}
     try { navigator.vibrate?.([300, 150, 300, 150, 600]); } catch {}
     document.body.classList.add('ringing');
     let next, msg;
+    if (state.profile !== 'pomodoro') {
+      const prof = PROFILES[state.profile], keys = prof.keys;
+      if (!state.ticked.includes(state.mode)) state.ticked.push(state.mode);
+      store.set('sfp-ticked', { date: today(), keys: state.ticked });
+      const i = keys.indexOf(state.mode);
+      next = [...keys.slice(i + 1), ...keys.slice(0, i)].find(k => !state.ticked.includes(k)) || null;
+      msg = next ? `${LABEL[state.mode]} done! Next up: ${LABEL[next]}.` : prof.allDoneMsg;
+      renderModes(); renderStatus();
+      $('#note').textContent = msg;
+      clearTimeout(ringTimer);
+      pendingNext = next;
+      ringTimer = setTimeout(() => {
+        document.body.classList.remove('ringing');
+        if (next) { setMode(next); $('#note').textContent = msg; }
+        else { renderWord(prof.allDone); }
+      }, 4000);
+      return;
+    }
     if (state.mode === 'focus') {
       state.done++;
       next = state.done % 4 === 0 ? 'long' : 'short';
@@ -633,8 +761,45 @@ body.ringing .flap{animation:ring .5s steps(1) infinite;color:var(--accent)}
     state.mode = m;
     state.remaining = state.durations[m] * 60;
     document.body.dataset.mode = m;
+    applyTaskLook(m);
     $('#go').textContent = 'Start';
     renderModes(); renderStatus(); renderTime();
+  }
+  function applyTaskLook(m){
+    const t = TASKS[m];
+    if (t.color) document.body.style.setProperty('--accent', t.color); else document.body.style.removeProperty('--accent');
+    $('#labelIcon').innerHTML = t.icon ? ICON[t.icon] : '';
+    renderWord(t.board);
+  }
+  function setProfile(p){
+    state.profile = p; store.set('sfp-profile', p);
+    document.querySelectorAll('.profile').forEach(b => b.setAttribute('aria-selected', b.dataset.profile === p));
+    const isTasks = p !== 'pomodoro';
+    $('#modes').hidden = isTasks;
+    $('#tasks').hidden = !isTasks;
+    $('#resetList').hidden = !isTasks;
+    $('#note').textContent = PROFILES[p].note;
+    buildDots();
+    const keys = PROFILES[p].keys;
+    setMode(isTasks ? (keys.find(k => !state.ticked.includes(k)) || keys[0]) : 'focus');
+  }
+  function buildTasks(){
+    const wrap = $('#tasks');
+    wrap.innerHTML = '';
+    ['kids', 'work'].forEach(p => PROFILES[p].keys.forEach(k => {
+      const t = TASKS[k];
+      const b = document.createElement('button');
+      b.className = 'task'; b.dataset.key = k; b.dataset.profile = p;
+      b.style.setProperty('--c', t.color);
+      b.innerHTML = ICON[t.icon] + `<span class="t-name">${t.label}</span><span class="t-min"></span>`;
+      b.addEventListener('click', () => { haptic(); sfx.unlock(); setMode(k); });
+      wrap.appendChild(b);
+    }));
+  }
+  function buildDots(){
+    const dots = $('#dots');
+    if (state.profile === 'pomodoro') { dots.innerHTML = '<i></i><i></i><i></i><i></i>'; return; }
+    dots.innerHTML = PROFILES[state.profile].keys.map(k => `<i style="--c:${TASKS[k].color}" title="${TASKS[k].label}"></i>`).join('');
   }
 
   function renderModes(){
@@ -642,8 +807,25 @@ body.ringing .flap{animation:ring .5s steps(1) infinite;color:var(--accent)}
       b.setAttribute('aria-pressed', b.dataset.mode === state.mode);
       b.querySelector('.len').textContent = state.durations[b.dataset.mode];
     });
+    document.querySelectorAll('.task').forEach(b => {
+      const k = b.dataset.key;
+      b.hidden = b.dataset.profile !== state.profile;
+      b.setAttribute('aria-pressed', k === state.mode);
+      b.classList.toggle('done', state.ticked.includes(k));
+      b.querySelector('.t-min').textContent = `${state.durations[k]} min`;
+    });
   }
   function renderStatus(){
+    if (state.profile !== 'pomodoro') {
+      const keys = PROFILES[state.profile].keys;
+      const doneN = keys.filter(k => state.ticked.includes(k)).length;
+      const label = LABEL[state.mode];
+      $('#statusText').innerHTML = doneN === keys.length && !state.running
+        ? `<b>All done</b> · ${doneN} of ${keys.length}`
+        : (state.running ? `Now · <b>${label}</b>` : `Up next · <b>${label}</b>`) + ` · ${doneN} of ${keys.length} done`;
+      document.querySelectorAll('#dots i').forEach((d, i) => d.classList.toggle('on', state.ticked.includes(keys[i])));
+      return;
+    }
     const round = (state.done % 4) + (state.mode === 'focus' ? 1 : 0);
     const what = LABEL[state.mode];
     let text;
@@ -694,8 +876,23 @@ body.ringing .flap{animation:ring .5s steps(1) infinite;color:var(--accent)}
   applyLook(store.get('sfp-look', 'classic') === 'minimal');
   lookBox.addEventListener('change', () => { haptic(); applyLook(lookBox.checked); store.set('sfp-look', lookBox.checked ? 'minimal' : 'classic'); });
 
-  document.body.dataset.mode = state.mode;
-  renderSound(); renderModes(); renderStatus(); renderTime();
+  $('#resetList').addEventListener('click', () => {
+    haptic();
+    const keys = PROFILES[state.profile].keys;
+    state.ticked = state.ticked.filter(k => !keys.includes(k));
+    store.set('sfp-ticked', { date: today(), keys: state.ticked });
+    setMode(keys[0]);
+    $('#note').textContent = PROFILES[state.profile].note;
+  });
+  document.querySelectorAll('.profile').forEach(b => b.addEventListener('click', () => {
+    haptic(); sfx.unlock();
+    if (state.running) stop();
+    setProfile(b.dataset.profile);
+  }));
+
+  buildTasks();
+  renderSound();
+  setProfile(state.profile);
 })();
 </script>
 </body>
