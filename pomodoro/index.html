@@ -1,0 +1,530 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Split-Flap Pomodoro</title>
+<meta name="theme-color" content="#141517">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&display=swap">
+<style>
+/* Layout: one dark instrument panel — split-flap board on top, kitchen-timer dial and controls below. */
+:root{
+  color-scheme: dark;
+  --housing:#141517;
+  --panel:#1c1d20;
+  --panel-edge:#2a2b2f;
+  --flap:#2b2c30;
+  --flap-lo:#232427;
+  --ink:#f1ebdd;
+  --muted:#8c8a84;
+  --amber:#f4b63f;
+  --teal:#62c7a8;
+  --accent:var(--amber);
+  --f-flap:"Barlow Condensed","Arial Narrow","Helvetica Neue",Arial,sans-serif;
+  --f-ui:"Barlow","Helvetica Neue",Arial,sans-serif;
+}
+html,body{height:100%}
+body{
+  margin:0;background:var(--housing);color:var(--ink);
+  font-family:var(--f-ui);font-size:15px;
+  -webkit-font-smoothing:antialiased;
+  display:flex;align-items:center;justify-content:center;
+  padding:16px;box-sizing:border-box;
+}
+body[data-mode="short"],body[data-mode="long"]{--accent:var(--teal)}
+*{box-sizing:border-box}
+button{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+
+.device{
+  width:100%;max-width:720px;
+  background:linear-gradient(180deg,#202124,var(--panel));
+  border:1px solid var(--panel-edge);
+  border-radius:22px;
+  padding:clamp(18px,4vw,34px);
+  box-shadow:0 30px 60px -20px rgba(0,0,0,.7), inset 0 1px 0 rgba(255,255,255,.05);
+  display:flex;flex-direction:column;gap:clamp(18px,3.5vw,28px);
+}
+
+/* mode row, styled like a board header */
+.modes{display:flex;gap:6px;flex-wrap:wrap}
+.mode{
+  flex:1 1 0;min-width:0;
+  background:var(--flap-lo);border:1px solid #2f3034;border-radius:6px;
+  padding:9px 8px;cursor:pointer;
+  font-family:var(--f-flap);font-weight:600;font-size:15px;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--muted);transition:color .2s,border-color .2s,background .2s;
+  white-space:nowrap;
+}
+.mode:hover{color:var(--ink)}
+.mode[aria-pressed="true"]{color:#141517;background:var(--accent);border-color:var(--accent)}
+.mode .len{opacity:.65;margin-left:.4em;font-variant-numeric:tabular-nums}
+
+/* board */
+.board{display:flex;flex-direction:column;align-items:center;gap:10px}
+.flaps{
+  --h:clamp(92px,25vw,168px);
+  display:flex;align-items:center;justify-content:center;
+  gap:clamp(4px,1.2vw,10px);
+}
+.flap{
+  position:relative;width:calc(var(--h)*.66);height:var(--h);
+  perspective:calc(var(--h)*4);
+  font-family:var(--f-flap);font-weight:600;font-size:calc(var(--h)*.86);
+  color:var(--ink);font-variant-numeric:tabular-nums;
+  border-radius:8px;
+  box-shadow:0 6px 14px rgba(0,0,0,.45);
+}
+.half{
+  position:absolute;left:0;right:0;height:50%;overflow:hidden;
+  backface-visibility:hidden;-webkit-backface-visibility:hidden;
+}
+.half span{display:block;height:var(--h);line-height:var(--h);text-align:center}
+.top,.leaf-top{top:0;border-radius:8px 8px 0 0;transform-origin:50% 100%;
+  background:linear-gradient(180deg,#323337,var(--flap))}
+.bottom,.leaf-bottom{bottom:0;border-radius:0 0 8px 8px;transform-origin:50% 0;
+  background:linear-gradient(180deg,var(--flap-lo),#1e1f22)}
+.bottom span,.leaf-bottom span{transform:translateY(-50%)}
+.leaf-bottom{transform:rotateX(90deg)}
+/* hinge gap and side pins */
+.flap::after{
+  content:"";position:absolute;left:0;right:0;top:50%;height:2px;margin-top:-1px;
+  background:#0d0e0f;z-index:5;
+}
+.flap::before{
+  content:"";position:absolute;left:-3px;right:-3px;top:50%;height:8px;margin-top:-4px;z-index:6;
+  background:
+    linear-gradient(90deg,#3b3c40 0 5px,transparent 5px calc(100% - 5px),#3b3c40 calc(100% - 5px));
+  border-radius:2px;
+}
+.flap.flipping .leaf-top{animation:fall-top .16s ease-in forwards}
+.flap.flipping .leaf-bottom{animation:fall-bottom .16s ease-out .16s forwards}
+@keyframes fall-top{from{transform:rotateX(0)}to{transform:rotateX(-90deg);filter:brightness(.6)}}
+@keyframes fall-bottom{from{transform:rotateX(90deg);filter:brightness(1.5)}to{transform:rotateX(0)}}
+
+.colon{display:flex;flex-direction:column;gap:calc(var(--h)*.2);padding:0 2px}
+.colon i{display:block;width:calc(var(--h)*.075);height:calc(var(--h)*.075);border-radius:50%;background:var(--accent);
+  box-shadow:0 0 12px color-mix(in srgb,var(--accent) 50%,transparent);transition:opacity .3s}
+body.running .colon i{animation:blink 1s steps(1) infinite}
+@keyframes blink{50%{opacity:.25}}
+
+.units{
+  display:flex;width:100%;max-width:calc(var(--h, 140px)*3);
+  justify-content:space-around;
+  font-family:var(--f-flap);font-size:13px;letter-spacing:.3em;color:var(--muted);text-transform:uppercase;
+}
+.status{
+  display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;
+  border-top:1px solid var(--panel-edge);padding-top:14px;
+  font-family:var(--f-flap);letter-spacing:.14em;text-transform:uppercase;font-size:15px;color:var(--muted);
+}
+.status b{color:var(--ink);font-weight:600}
+.dots{display:flex;gap:7px;align-items:center}
+.dots i{width:10px;height:10px;border-radius:50%;border:1.5px solid #4a4a4c;transition:background .3s,border-color .3s}
+.dots i.on{background:var(--amber);border-color:var(--amber)}
+
+/* controls */
+.controls{display:grid;grid-template-columns:auto 1fr;gap:clamp(16px,4vw,36px);align-items:center}
+.dial-wrap{position:relative;width:min(270px,64vw);aspect-ratio:1;max-width:100%;justify-self:center}
+.dial{width:100%;height:100%;display:block;touch-action:none;cursor:grab;border-radius:50%}
+.dial.dragging{cursor:grabbing}
+.dial .tick{stroke:#57575a}
+.dial .tick.major{stroke:#9a978f}
+.dial .lbl{fill:var(--muted);font-family:var(--f-flap);font-size:13px;font-weight:600;letter-spacing:.04em}
+.dial .track{stroke:#26272a}
+.dial .arc{stroke:var(--accent);transition:stroke .3s}
+.dial .notch{fill:var(--accent);transition:fill .3s}
+.hint{position:absolute;left:0;right:0;bottom:-24px;text-align:center;font-size:12px;color:var(--muted);letter-spacing:.04em}
+
+.side{display:flex;flex-direction:column;gap:12px;min-width:0}
+.btn{
+  border:1px solid #34353a;background:#25262a;border-radius:12px;
+  padding:14px 18px;cursor:pointer;
+  font-family:var(--f-flap);font-weight:600;font-size:18px;letter-spacing:.16em;text-transform:uppercase;
+  transition:transform .08s,background .2s,border-color .2s;
+}
+.btn:hover{background:#2c2d31}
+.btn:active{transform:translateY(1px)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#141517;font-size:22px;padding:18px}
+.btn.primary:hover{filter:brightness(1.06)}
+.row{display:flex;gap:10px}
+.row .btn{flex:1}
+.btn[aria-pressed="false"]{color:var(--muted)}
+.note{font-size:13px;color:var(--muted);line-height:1.5;margin:4px 0 0}
+
+@media (max-width:560px){
+  .controls{grid-template-columns:1fr;gap:40px}
+  .mode{font-size:13px;letter-spacing:.1em}
+  .mode .len{display:none}
+}
+@media (prefers-reduced-motion:reduce){
+  .flap.flipping .leaf-top,.flap.flipping .leaf-bottom{animation:none}
+  body.running .colon i{animation:none}
+}
+</style>
+</head>
+<body>
+<main class="device">
+  <div class="modes" role="group" aria-label="Session type">
+    <button class="mode" id="m-focus" data-mode="focus" aria-pressed="true">Focus<span class="len"></span></button>
+    <button class="mode" id="m-short" data-mode="short" aria-pressed="false">Short break<span class="len"></span></button>
+    <button class="mode" id="m-long" data-mode="long" aria-pressed="false">Long break<span class="len"></span></button>
+  </div>
+
+  <section class="board" aria-live="off">
+    <div class="flaps" id="flaps" role="timer" aria-label="Time remaining">
+      <div class="flap" data-i="0"></div>
+      <div class="flap" data-i="1"></div>
+      <div class="colon" aria-hidden="true"><i></i><i></i></div>
+      <div class="flap" data-i="2"></div>
+      <div class="flap" data-i="3"></div>
+    </div>
+    <div class="units" aria-hidden="true"><span>Min</span><span>Sec</span></div>
+  </section>
+
+  <div class="controls">
+    <div class="dial-wrap">
+      <svg class="dial" id="dial" viewBox="0 0 240 240" role="slider" tabindex="0"
+           aria-label="Set minutes" aria-valuemin="1" aria-valuemax="60" aria-valuenow="25"></svg>
+      <div class="hint">Turn the dial · arrow keys work too</div>
+    </div>
+    <div class="side">
+      <button class="btn primary" id="go">Start</button>
+      <div class="row">
+        <button class="btn" id="reset">Reset</button>
+        <button class="btn" id="sound" aria-pressed="true">Sound</button>
+      </div>
+      <p class="note" id="note">Four focus rounds, then a long break. Space starts and pauses.</p>
+    </div>
+  </div>
+
+  <div class="status">
+    <span id="statusText">Now boarding <b>Focus</b></span>
+    <span class="dots" aria-label="Focus rounds completed"><i></i><i></i><i></i><i></i></span>
+  </div>
+</main>
+
+<script>
+(() => {
+  const store = {
+    get(k, d){ try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch { return d; } },
+    set(k, v){ try { localStorage.setItem(k, JSON.stringify(v)); } catch {} }
+  };
+
+  const LABEL = { focus: 'Focus', short: 'Short break', long: 'Long break' };
+  const state = {
+    mode: 'focus',
+    durations: Object.assign({ focus: 25, short: 5, long: 15 }, store.get('sfp-durations', {})),
+    running: false,
+    endAt: 0,
+    remaining: 0,
+    done: 0,
+    sound: store.get('sfp-sound', true),
+  };
+  state.remaining = state.durations.focus * 60;
+
+  const $ = s => document.querySelector(s);
+  const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  /* ---------- split-flap digits ---------- */
+  const flaps = [...document.querySelectorAll('.flap')].map(el => {
+    el.innerHTML =
+      '<div class="half top"><span></span></div>' +
+      '<div class="half bottom"><span></span></div>' +
+      '<div class="half leaf-top"><span></span></div>' +
+      '<div class="half leaf-bottom"><span></span></div>';
+    const [top, bottom, lt, lb] = [...el.querySelectorAll('span')];
+    const f = { el, top, bottom, lt, lb, value: null, timer: 0 };
+    return f;
+  });
+
+  function settle(f){
+    clearTimeout(f.timer);
+    f.el.classList.remove('flipping');
+    f.top.textContent = f.bottom.textContent = f.lt.textContent = f.lb.textContent = f.value;
+  }
+  function setDigit(f, v){
+    if (f.value === v) return;
+    const old = f.value;
+    f.value = v;
+    if (old === null || reduceMotion) { settle(f); return; }
+    clearTimeout(f.timer);
+    f.el.classList.remove('flipping');
+    f.top.textContent = v;        // revealed behind the falling leaf
+    f.bottom.textContent = old;   // covered once the lower leaf lands
+    f.lt.textContent = old;
+    f.lb.textContent = v;
+    void f.el.offsetWidth;
+    f.el.classList.add('flipping');
+    f.timer = setTimeout(() => settle(f), 340);
+  }
+
+  function renderTime(){
+    const s = Math.max(0, state.remaining);
+    const mm = String(Math.floor(s / 60)).padStart(2, '0');
+    const ss = String(s % 60).padStart(2, '0');
+    const str = mm + ss;
+    flaps.forEach((f, i) => setDigit(f, str[i]));
+    document.title = state.running ? `${mm}:${ss} · ${LABEL[state.mode]}` : 'Split-Flap Pomodoro';
+    renderDial();
+  }
+
+  /* ---------- dial ---------- */
+  const NS = 'http://www.w3.org/2000/svg';
+  const svg = $('#dial');
+  const C = 120, R_ARC = 104, CIRC = 2 * Math.PI * R_ARC;
+  const el = (tag, attrs, parent = svg) => {
+    const n = document.createElementNS(NS, tag);
+    for (const k in attrs) n.setAttribute(k, attrs[k]);
+    parent.appendChild(n); return n;
+  };
+
+  const defs = el('defs', {});
+  defs.innerHTML = `
+    <radialGradient id="knobG" cx="40%" cy="35%" r="75%">
+      <stop offset="0" stop-color="#4a4b50"/><stop offset=".6" stop-color="#2c2d31"/><stop offset="1" stop-color="#1b1c1f"/>
+    </radialGradient>
+    <radialGradient id="faceG" cx="50%" cy="50%" r="50%">
+      <stop offset=".7" stop-color="#18191b"/><stop offset="1" stop-color="#101113"/>
+    </radialGradient>
+    <filter id="knobShadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="6" stdDeviation="6" flood-color="#000" flood-opacity=".6"/>
+    </filter>`;
+
+  el('circle', { cx: C, cy: C, r: 118, fill: 'url(#faceG)' });
+  el('circle', { cx: C, cy: C, r: R_ARC, fill: 'none', class: 'track', 'stroke-width': 6 });
+  const arc = el('circle', {
+    cx: C, cy: C, r: R_ARC, fill: 'none', class: 'arc', 'stroke-width': 6,
+    'stroke-linecap': 'butt', 'stroke-dasharray': `0 ${CIRC}`, transform: `rotate(-90 ${C} ${C})`
+  });
+  for (let m = 0; m < 60; m++) {
+    const major = m % 5 === 0;
+    const a = m * 6 * Math.PI / 180;
+    const r1 = 92, r2 = major ? 82 : 87;
+    el('line', {
+      x1: C + r1 * Math.sin(a), y1: C - r1 * Math.cos(a),
+      x2: C + r2 * Math.sin(a), y2: C - r2 * Math.cos(a),
+      class: 'tick' + (major ? ' major' : ''), 'stroke-width': major ? 2 : 1
+    });
+    if (major) {
+      const rl = 72;
+      const t = el('text', {
+        x: C + rl * Math.sin(a), y: C - rl * Math.cos(a) + 4.5,
+        'text-anchor': 'middle', class: 'lbl'
+      });
+      t.textContent = m === 0 ? '60' : m;
+    }
+  }
+  const knob = el('g', { filter: 'url(#knobShadow)' });
+  el('circle', { cx: C, cy: C, r: 56, fill: 'url(#knobG)', stroke: '#3a3b40', 'stroke-width': 1 }, knob);
+  for (let i = 0; i < 36; i++) {          // knurled grip
+    const a = i * 10 * Math.PI / 180;
+    el('line', {
+      x1: C + 50 * Math.sin(a), y1: C - 50 * Math.cos(a),
+      x2: C + 55 * Math.sin(a), y2: C - 55 * Math.cos(a),
+      stroke: '#18191b', 'stroke-width': 1.4
+    }, knob);
+  }
+  el('circle', { cx: C, cy: C, r: 40, fill: '#25262a', stroke: '#34353a' }, knob);
+  el('rect', { x: C - 3, y: C - 52, width: 6, height: 22, rx: 3, class: 'notch' }, knob);
+
+  function renderDial(){
+    const secs = Math.max(0, state.remaining);
+    const frac = Math.min(1, secs / 3600);
+    arc.setAttribute('stroke-dasharray', `${frac * CIRC} ${CIRC}`);
+    knob.setAttribute('transform', `rotate(${frac * 360} ${C} ${C})`);
+    svg.setAttribute('aria-valuenow', Math.ceil(secs / 60));
+    svg.setAttribute('aria-valuetext', `${Math.ceil(secs / 60)} minutes`);
+  }
+
+  function setMinutes(min, withTick = true){
+    min = Math.max(1, Math.min(60, Math.round(min)));
+    const changed = min * 60 !== state.remaining || state.running;
+    if (state.running) stop();
+    if (!changed) return;
+    state.durations[state.mode] = min;
+    state.remaining = min * 60;
+    store.set('sfp-durations', state.durations);
+    if (withTick) sfx.tick();
+    renderModes();
+    renderTime();
+  }
+
+  const angleAt = e => {
+    const r = svg.getBoundingClientRect();
+    const x = e.clientX - (r.left + r.width / 2);
+    const y = e.clientY - (r.top + r.height / 2);
+    return Math.atan2(x, -y) * 180 / Math.PI;
+  };
+  let drag = null;
+  svg.addEventListener('pointerdown', e => {
+    sfx.unlock();
+    svg.setPointerCapture(e.pointerId);
+    svg.classList.add('dragging');
+    drag = { last: angleAt(e), acc: Math.ceil(state.remaining / 60) * 6 };
+    if (state.running) stop();
+    e.preventDefault();
+  });
+  svg.addEventListener('pointermove', e => {
+    if (!drag) return;
+    const a = angleAt(e);
+    let d = a - drag.last;
+    if (d > 180) d -= 360;
+    if (d < -180) d += 360;
+    drag.last = a;
+    drag.acc = Math.max(6, Math.min(360, drag.acc + d));
+    const min = Math.round(drag.acc / 6);
+    if (min * 60 !== state.remaining) setMinutes(min);
+  });
+  const endDrag = () => { drag = null; svg.classList.remove('dragging'); };
+  svg.addEventListener('pointerup', endDrag);
+  svg.addEventListener('pointercancel', endDrag);
+  svg.addEventListener('wheel', e => {
+    e.preventDefault();
+    setMinutes(Math.ceil(state.remaining / 60) + (e.deltaY < 0 ? 1 : -1));
+  }, { passive: false });
+  svg.addEventListener('keydown', e => {
+    const cur = Math.ceil(state.remaining / 60);
+    const map = { ArrowUp: 1, ArrowRight: 1, ArrowDown: -1, ArrowLeft: -1, PageUp: 5, PageDown: -5 };
+    if (e.key in map) { e.preventDefault(); sfx.unlock(); setMinutes(cur + map[e.key]); }
+  });
+
+  /* ---------- sound ---------- */
+  const sfx = {
+    ctx: null,
+    unlock(){
+      if (!this.ctx) { try { this.ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch {} }
+      if (this.ctx && this.ctx.state === 'suspended') this.ctx.resume();
+    },
+    tick(){
+      if (!state.sound || !this.ctx) return;
+      const c = this.ctx, t = c.currentTime;
+      const buf = c.createBuffer(1, c.sampleRate * 0.02, c.sampleRate);
+      const d = buf.getChannelData(0);
+      for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / d.length, 4);
+      const src = c.createBufferSource(); src.buffer = buf;
+      const bp = c.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 2400; bp.Q.value = 1.2;
+      const g = c.createGain(); g.gain.value = 0.5;
+      src.connect(bp).connect(g).connect(c.destination);
+      src.start(t);
+    },
+    chime(){
+      if (!state.sound || !this.ctx) return;
+      const c = this.ctx, t0 = c.currentTime;
+      [[659.25, 0], [523.25, 0.42], [392, 0.84]].forEach(([f, dt]) => {
+        const o = c.createOscillator(), g = c.createGain();
+        o.type = 'sine'; o.frequency.value = f;
+        g.gain.setValueAtTime(0.0001, t0 + dt);
+        g.gain.exponentialRampToValueAtTime(0.32, t0 + dt + 0.02);
+        g.gain.exponentialRampToValueAtTime(0.0001, t0 + dt + 1.4);
+        o.connect(g).connect(c.destination);
+        o.start(t0 + dt); o.stop(t0 + dt + 1.5);
+      });
+    }
+  };
+
+  /* ---------- timer ---------- */
+  let loop = 0, wake = null;
+  function start(){
+    if (state.remaining <= 0) state.remaining = state.durations[state.mode] * 60;
+    state.running = true;
+    state.endAt = Date.now() + state.remaining * 1000;
+    clearInterval(loop);
+    loop = setInterval(tick, 200);
+    document.body.classList.add('running');
+    $('#go').textContent = 'Pause';
+    try { navigator.wakeLock?.request('screen').then(w => wake = w).catch(() => {}); } catch {}
+    renderStatus();
+  }
+  function stop(){
+    state.running = false;
+    clearInterval(loop);
+    document.body.classList.remove('running');
+    $('#go').textContent = state.remaining < state.durations[state.mode] * 60 && state.remaining > 0 ? 'Resume' : 'Start';
+    try { wake?.release(); } catch {}
+    wake = null;
+    renderStatus();
+    renderTime();
+  }
+  function tick(){
+    const left = Math.ceil((state.endAt - Date.now()) / 1000);
+    if (left !== state.remaining) { state.remaining = left; renderTime(); }
+    if (left <= 0) complete();
+  }
+  function complete(){
+    state.remaining = 0;
+    stop();
+    sfx.chime();
+    let next, msg;
+    if (state.mode === 'focus') {
+      state.done++;
+      next = state.done % 4 === 0 ? 'long' : 'short';
+      msg = next === 'long' ? 'Four rounds done. Take a long break.' : 'Focus round done. Take a short break.';
+    } else {
+      if (state.mode === 'long') state.done = 0;
+      next = 'focus';
+      msg = 'Break over. Ready for the next focus round.';
+    }
+    setMode(next);
+    $('#note').textContent = msg;
+  }
+  function setMode(m){
+    if (state.running) { state.running = false; clearInterval(loop); document.body.classList.remove('running'); }
+    state.mode = m;
+    state.remaining = state.durations[m] * 60;
+    document.body.dataset.mode = m;
+    $('#go').textContent = 'Start';
+    renderModes(); renderStatus(); renderTime();
+  }
+
+  function renderModes(){
+    document.querySelectorAll('.mode').forEach(b => {
+      b.setAttribute('aria-pressed', b.dataset.mode === state.mode);
+      b.querySelector('.len').textContent = state.durations[b.dataset.mode];
+    });
+  }
+  function renderStatus(){
+    const round = (state.done % 4) + (state.mode === 'focus' ? 1 : 0);
+    const what = LABEL[state.mode];
+    let text;
+    if (state.mode === 'focus') text = state.running ? `Departed · <b>Focus</b> round ${round} of 4` : `Now boarding · <b>Focus</b> round ${round} of 4`;
+    else text = state.running ? `On break · <b>${what}</b>` : `Next · <b>${what}</b>`;
+    $('#statusText').innerHTML = text;
+    const filled = state.mode === 'long' && state.done % 4 === 0 && state.done > 0 ? 4 : state.done % 4;
+    document.querySelectorAll('.dots i').forEach((d, i) => d.classList.toggle('on', i < filled));
+  }
+
+  /* ---------- wiring ---------- */
+  $('#go').addEventListener('click', () => { sfx.unlock(); state.running ? stop() : start(); });
+  $('#reset').addEventListener('click', () => {
+    if (state.running) { state.running = false; clearInterval(loop); document.body.classList.remove('running'); }
+    state.remaining = state.durations[state.mode] * 60;
+    $('#go').textContent = 'Start';
+    renderStatus(); renderTime();
+  });
+  const soundBtn = $('#sound');
+  const renderSound = () => { soundBtn.setAttribute('aria-pressed', state.sound); soundBtn.textContent = state.sound ? 'Sound on' : 'Sound off'; };
+  soundBtn.addEventListener('click', () => { state.sound = !state.sound; store.set('sfp-sound', state.sound); sfx.unlock(); renderSound(); });
+  document.querySelectorAll('.mode').forEach(b => b.addEventListener('click', () => { setMode(b.dataset.mode); }));
+  document.addEventListener('keydown', e => {
+    if (e.code === 'Space' && !['BUTTON', 'INPUT'].includes(document.activeElement?.tagName)) {
+      e.preventDefault(); sfx.unlock(); state.running ? stop() : start();
+    }
+  });
+  document.addEventListener('visibilitychange', () => {
+    if (state.running) {
+      tick();
+      if (document.visibilityState === 'visible' && !wake) {
+        try { navigator.wakeLock?.request('screen').then(w => wake = w).catch(() => {}); } catch {}
+      }
+    }
+  });
+
+  document.body.dataset.mode = state.mode;
+  renderSound(); renderModes(); renderStatus(); renderTime();
+})();
+</script>
+</body>
+</html>

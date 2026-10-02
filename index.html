@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Organik Lab</title>
+<meta name="theme-color" content="#141517">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600&family=Barlow:wght@400;500&display=swap">
+<style>
+:root{
+  color-scheme:dark;
+  --bg:#141517;--panel:#1c1d20;--edge:#2a2b2f;--ink:#f1ebdd;--muted:#8c8a84;--amber:#f4b63f;
+  --f-head:"Barlow Condensed","Arial Narrow",Arial,sans-serif;
+  --f-body:"Barlow","Helvetica Neue",Arial,sans-serif;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:16px;line-height:1.5;padding:48px 16px}
+main{max-width:640px;margin:0 auto;display:flex;flex-direction:column;gap:32px}
+h1{font-family:var(--f-head);font-weight:600;font-size:clamp(40px,9vw,64px);letter-spacing:.06em;text-transform:uppercase;margin:0;line-height:1}
+h1 span{color:var(--amber)}
+.lede{color:var(--muted);margin:8px 0 0}
+ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
+a.item{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:18px 20px;background:var(--panel);border:1px solid var(--edge);border-radius:12px;color:inherit;text-decoration:none;transition:border-color .2s}
+a.item:hover,a.item:focus-visible{border-color:var(--amber);outline:none}
+.name{font-family:var(--f-head);font-weight:600;font-size:22px;letter-spacing:.08em;text-transform:uppercase}
+.desc{color:var(--muted);font-size:14px}
+.arrow{color:var(--amber);font-family:var(--f-head);font-size:22px}
+footer{color:var(--muted);font-size:13px;border-top:1px solid var(--edge);padding-top:16px}
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Organik <span>Lab</span></h1>
+    <p class="lede">Small tools and experiments by Organik Creations.</p>
+  </header>
+  <ul>
+    <li>
+      <a class="item" href="/pomodoro/">
+        <span><span class="name">Split-Flap Pomodoro</span><br><span class="desc">Focus timer with a rotary dial and an airport-board countdown.</span></span>
+        <span class="arrow" aria-hidden="true">→</span>
+      </a>
+    </li>
+  </ul>
+  <footer>Organik Creations</footer>
+</main>
+</body>
+</html>
