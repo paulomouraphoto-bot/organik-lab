@@ -21,6 +21,7 @@
   --muted:#8c8a84;
   --amber:#f4b63f;
   --teal:#62c7a8;
+  --violet:#a98cf5;
   --accent:var(--amber);
   --f-flap:"Barlow Condensed","Arial Narrow","Helvetica Neue",Arial,sans-serif;
   --f-ui:"Barlow","Helvetica Neue",Arial,sans-serif;
@@ -33,7 +34,8 @@ body{
   display:flex;min-height:100%;
   padding:max(16px,env(safe-area-inset-top)) 16px max(16px,env(safe-area-inset-bottom));box-sizing:border-box;
 }
-body[data-mode="short"],body[data-mode="long"]{--accent:var(--teal)}
+body[data-mode="short"]{--accent:var(--teal)}
+body[data-mode="long"]{--accent:var(--violet)}
 *{box-sizing:border-box}
 button{font:inherit;color:inherit}
 :focus-visible{outline:2px solid var(--accent);outline-offset:3px}
@@ -154,6 +156,39 @@ body.running .colon i{animation:blink 1s steps(1) infinite}
 .btn[aria-pressed="false"]{color:var(--muted)}
 .note{font-size:13px;color:var(--muted);line-height:1.5;margin:4px 0 0}
 
+/* look toggle */
+.look-toggle{display:flex;align-items:center;gap:10px;cursor:pointer;font-size:14px;color:var(--muted);user-select:none;padding:4px 0}
+.look-toggle input{position:absolute;opacity:0;width:1px;height:1px}
+.look-toggle .track{width:40px;height:22px;border-radius:11px;background:#2c2d31;border:1px solid #3a3b40;position:relative;transition:background .2s,border-color .2s;flex:none}
+.look-toggle .track::after{content:"";position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:var(--ink);transition:transform .2s}
+.look-toggle input:checked + .track{background:var(--accent);border-color:var(--accent)}
+.look-toggle input:checked + .track::after{transform:translateX(18px);background:#141517}
+.look-toggle input:focus-visible + .track{outline:2px solid var(--accent);outline-offset:3px}
+.haptic-switch{position:fixed;left:-9999px;top:0;opacity:0;pointer-events:none}
+
+/* minimal look: same layout, stripped back to flat planes and hairlines */
+body[data-look="minimal"]{--flap:#1f2023;--flap-lo:#1f2023}
+body[data-look="minimal"] .device{background:var(--housing);border-color:transparent;box-shadow:none}
+body[data-look="minimal"] .flap{box-shadow:none;font-weight:500}
+body[data-look="minimal"] .top,body[data-look="minimal"] .leaf-top,
+body[data-look="minimal"] .bottom,body[data-look="minimal"] .leaf-bottom{background:var(--flap)}
+body[data-look="minimal"] .flap::before{display:none}
+body[data-look="minimal"] .flap::after{height:1px;margin-top:0;background:var(--housing)}
+body[data-look="minimal"] .colon i{box-shadow:none}
+body[data-look="minimal"] .mode{background:transparent;border-color:transparent;border-radius:0;border-bottom:2px solid var(--panel-edge)}
+body[data-look="minimal"] .mode[aria-pressed="true"]{background:transparent;color:var(--accent);border-color:transparent;border-bottom-color:var(--accent)}
+body[data-look="minimal"] .btn{background:transparent;border-color:var(--panel-edge)}
+body[data-look="minimal"] .btn:hover{background:var(--panel)}
+body[data-look="minimal"] .btn.primary{background:transparent;color:var(--accent);border-color:var(--accent)}
+body[data-look="minimal"] .dial .face{fill:transparent}
+body[data-look="minimal"] .dial .knurl,body[data-look="minimal"] .dial .tick:not(.major){display:none}
+body[data-look="minimal"] .dial .knob{filter:none}
+body[data-look="minimal"] .dial .knob-body{fill:var(--flap);stroke:transparent}
+body[data-look="minimal"] .dial .knob-cap{fill:var(--flap);stroke:transparent}
+body[data-look="minimal"] .dial .track{stroke-width:2}
+body[data-look="minimal"] .dial .arc{stroke-width:2}
+body[data-look="minimal"] .dots i{width:8px;height:8px}
+
 @media (max-width:560px){
   .controls{grid-template-columns:1fr;gap:40px}
   .mode{font-size:13px;letter-spacing:.1em}
@@ -196,6 +231,7 @@ body.running .colon i{animation:blink 1s steps(1) infinite}
         <button class="btn" id="reset">Reset</button>
         <button class="btn" id="sound" aria-pressed="true">Sound</button>
       </div>
+      <label class="look-toggle" for="look"><input type="checkbox" id="look" role="switch"><span class="track" aria-hidden="true"></span><span>Minimal look</span></label>
       <p class="note" id="note">Four focus rounds, then a long break. Space starts and pauses.</p>
     </div>
   </div>
@@ -206,6 +242,7 @@ body.running .colon i{animation:blink 1s steps(1) infinite}
   </div>
 </main>
 
+<label class="haptic-switch" id="hapticLabel" aria-hidden="true"><input type="checkbox" switch tabindex="-1"></label>
 <script>
 (() => {
   const store = {
@@ -293,7 +330,7 @@ body.running .colon i{animation:blink 1s steps(1) infinite}
       <feDropShadow dx="0" dy="6" stdDeviation="6" flood-color="#000" flood-opacity=".6"/>
     </filter>`;
 
-  el('circle', { cx: C, cy: C, r: 118, fill: 'url(#faceG)' });
+  el('circle', { cx: C, cy: C, r: 118, fill: 'url(#faceG)', class: 'face' });
   el('circle', { cx: C, cy: C, r: R_ARC, fill: 'none', class: 'track', 'stroke-width': 6 });
   const arc = el('circle', {
     cx: C, cy: C, r: R_ARC, fill: 'none', class: 'arc', 'stroke-width': 6,
@@ -317,17 +354,17 @@ body.running .colon i{animation:blink 1s steps(1) infinite}
       t.textContent = m === 0 ? '60' : m;
     }
   }
-  const knob = el('g', { filter: 'url(#knobShadow)' });
-  el('circle', { cx: C, cy: C, r: 56, fill: 'url(#knobG)', stroke: '#3a3b40', 'stroke-width': 1 }, knob);
+  const knob = el('g', { filter: 'url(#knobShadow)', class: 'knob' });
+  el('circle', { cx: C, cy: C, r: 56, fill: 'url(#knobG)', stroke: '#3a3b40', 'stroke-width': 1, class: 'knob-body' }, knob);
   for (let i = 0; i < 36; i++) {          // knurled grip
     const a = i * 10 * Math.PI / 180;
     el('line', {
       x1: C + 50 * Math.sin(a), y1: C - 50 * Math.cos(a),
       x2: C + 55 * Math.sin(a), y2: C - 55 * Math.cos(a),
-      stroke: '#18191b', 'stroke-width': 1.4
+      stroke: '#18191b', 'stroke-width': 1.4, class: 'knurl'
     }, knob);
   }
-  el('circle', { cx: C, cy: C, r: 40, fill: '#25262a', stroke: '#34353a' }, knob);
+  el('circle', { cx: C, cy: C, r: 40, fill: '#25262a', stroke: '#34353a', class: 'knob-cap' }, knob);
   el('rect', { x: C - 3, y: C - 52, width: 6, height: 22, rx: 3, class: 'notch' }, knob);
 
   function renderDial(){
@@ -347,7 +384,7 @@ body.running .colon i{animation:blink 1s steps(1) infinite}
     state.durations[state.mode] = min;
     state.remaining = min * 60;
     store.set('sfp-durations', state.durations);
-    if (withTick) sfx.tick();
+    if (withTick) { sfx.tick(); haptic(); }
     renderModes();
     renderTime();
   }
@@ -390,6 +427,16 @@ body.running .colon i{animation:blink 1s steps(1) infinite}
     const map = { ArrowUp: 1, ArrowRight: 1, ArrowDown: -1, ArrowLeft: -1, PageUp: 5, PageDown: -5 };
     if (e.key in map) { e.preventDefault(); sfx.unlock(); setMinutes(cur + map[e.key]); }
   });
+
+  /* ---------- haptics ---------- */
+  // Android: Vibration API. iPhone (iOS 18+): toggling a native switch gives a system haptic tick.
+  const hapticLabel = document.getElementById('hapticLabel');
+  function haptic(){
+    try {
+      if (typeof navigator.vibrate === 'function') { navigator.vibrate(8); return; }
+      hapticLabel.click();
+    } catch {}
+  }
 
   /* ---------- sound ---------- */
   const sfx = {
@@ -521,6 +568,11 @@ body.running .colon i{animation:blink 1s steps(1) infinite}
       }
     }
   });
+
+  const lookBox = $('#look');
+  const applyLook = minimal => { document.body.dataset.look = minimal ? 'minimal' : 'classic'; lookBox.checked = minimal; };
+  applyLook(store.get('sfp-look', 'classic') === 'minimal');
+  lookBox.addEventListener('change', () => { applyLook(lookBox.checked); store.set('sfp-look', lookBox.checked ? 'minimal' : 'classic'); });
 
   document.body.dataset.mode = state.mode;
   renderSound(); renderModes(); renderStatus(); renderTime();
