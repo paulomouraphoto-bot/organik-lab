@@ -330,7 +330,7 @@ body.ringing .flap{animation:ring .5s steps(1) infinite;color:var(--accent)}
     const str = mm + ss;
     let n = 0;
     flaps.forEach((f, i) => {
-      if (f.value !== null && f.value !== str[i]) sfx.flap(n++ * 0.045, panicNow());
+      if (f.value !== null && f.value !== str[i]) sfx.flap(n++ * 0.03, panicNow());
       setDigit(f, str[i]);
     });
     document.title = state.running ? `${mm}:${ss} · ${LABEL[state.mode]}` : 'Split-Flap Pomodoro';
@@ -521,16 +521,33 @@ body.ringing .flap{animation:ring .5s steps(1) infinite;color:var(--accent)}
       out.connect(lp).connect(c.destination);
       src.start(t);
     },
-    // a real board riffles through a few cards before the right one lands
+    noise(){
+      if (!this._noise) {
+        const c = this.ctx, len = Math.floor(c.sampleRate * 0.06);
+        const b = c.createBuffer(1, len, c.sampleRate), d = b.getChannelData(0);
+        for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+        this._noise = b;
+      }
+      return this._noise;
+    },
+    clack(t, freq, gain, decay){
+      const c = this.ctx;
+      const src = c.createBufferSource(); src.buffer = this.noise();
+      const bp = c.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = freq; bp.Q.value = 0.9;
+      const g = c.createGain();
+      g.gain.setValueAtTime(gain, t);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + decay);
+      src.connect(bp).connect(g).connect(c.destination);
+      src.start(t); src.stop(t + decay + 0.01);
+    },
+    // two-part clack: the leaf letting go, then landing on the card below (matches the flip animation)
     flap(delay = 0, force = false){
       if (!(state.flip || force) || !this.ready()) return;
-      const t0 = this.ctx.currentTime + delay;
-      const n = 3 + Math.floor(Math.random() * 2);
-      for (let k = 0; k < n; k++) {
-        const last = k === n - 1;
-        const t = t0 + k * (0.026 + Math.random() * 0.01);
-        this.click(t, last ? 0.9 : 0.45 + Math.random() * 0.15, 0.92 + Math.random() * 0.16);
-      }
+      const t = this.ctx.currentTime + delay;
+      const v = 0.85 + Math.random() * 0.3;
+      this.clack(t, 3200 * v, 0.18, 0.012);
+      this.clack(t + 0.15, 1700 * v, 0.42, 0.028);
+      this.clack(t + 0.15, 420, 0.25, 0.03);
     },
     // airport-style announcement chime, rung twice, with bell partials so it carries on a phone speaker
     chime(){
