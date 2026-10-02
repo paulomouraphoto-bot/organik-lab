@@ -59,6 +59,14 @@ button{font:inherit;color:inherit}
 .profile[aria-selected="true"]{background:var(--flap);color:var(--ink)}
 
 /* task strip for Kids and Work boards */
+.tasks-wrap{position:relative;min-width:0}
+.scroll-btn{position:absolute;top:50%;z-index:3;width:36px;height:36px;margin-top:-22px;border-radius:50%;
+  display:grid;place-items:center;padding:0;cursor:pointer;color:var(--ink);
+  background:var(--panel);border:1px solid var(--panel-edge);box-shadow:0 4px 12px rgba(0,0,0,.5);transition:transform .1s}
+.scroll-btn:active{transform:scale(.92)}
+.scroll-btn svg{width:18px;height:18px}
+.scroll-btn.left{left:-10px}
+.scroll-btn.right{right:-10px}
 .tasks{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(100px,1fr);gap:8px;overflow-x:auto;padding:4px 2px 8px;margin:-4px -2px -8px;scrollbar-width:thin}
 .task{--c:var(--amber);position:relative;display:flex;flex-direction:column;align-items:center;gap:6px;
   padding:12px 8px 10px;border-radius:14px;cursor:pointer;
@@ -91,7 +99,7 @@ button{font:inherit;color:inherit}
 /* board */
 .board{display:flex;flex-direction:column;align-items:center;gap:10px}
 .label-row{display:flex;align-items:center;justify-content:center;gap:10px;max-width:100%}
-.word{--h:clamp(28px,7.2vw,46px);display:flex;gap:clamp(2px,.5vw,4px)}
+.word{--h:clamp(26px,6.4vw,44px);display:flex;gap:clamp(2px,.5vw,4px)}
 .word .flap{border-radius:4px;box-shadow:0 3px 6px rgba(0,0,0,.4)}
 .word .top,.word .leaf-top{border-radius:4px 4px 0 0}
 .word .bottom,.word .leaf-bottom{border-radius:0 0 4px 4px}
@@ -270,7 +278,11 @@ body.ringing #flaps .flap{animation:ring .5s steps(1) infinite;color:var(--accen
     <button class="profile" role="tab" data-profile="kids">Kids</button>
     <button class="profile" role="tab" data-profile="work">Work</button>
   </div>
-  <div class="tasks" id="tasks" role="group" aria-label="Tasks" hidden></div>
+  <div class="tasks-wrap" id="tasksWrap" hidden>
+    <button class="scroll-btn left" id="scrollL" aria-label="Scroll tasks left" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+    <div class="tasks" id="tasks" role="group" aria-label="Tasks"></div>
+    <button class="scroll-btn right" id="scrollR" aria-label="Scroll tasks right" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+  </div>
   <div class="modes" id="modes" role="group" aria-label="Session type">
     <button class="mode" id="m-focus" data-mode="focus" aria-pressed="true">Focus<span class="len"></span></button>
     <button class="mode" id="m-short" data-mode="short" aria-pressed="false">Short break<span class="len"></span></button>
@@ -407,7 +419,7 @@ body.ringing #flaps .flap{animation:ring .5s steps(1) infinite;color:var(--accen
     return { el, top, bottom, lt, lb, value: null, timer: 0 };
   };
   const flaps = [...document.querySelectorAll('#flaps .flap')].map(makeFlap);
-  const WORD_LEN = 11;
+  const WORD_LEN = 14;
   const wordEl = $('#word');
   const wordFlaps = Array.from({ length: WORD_LEN }, () => {
     const d = document.createElement('div'); d.className = 'flap'; wordEl.appendChild(d); return makeFlap(d);
@@ -704,16 +716,61 @@ body.ringing #flaps .flap{animation:ring .5s steps(1) infinite;color:var(--accen
   };
 
   /* ---------- music box ---------- */
-  // "Twinkle, Twinkle, Little Star" (traditional) played on a synthesized music-box comb.
+  // All tunes are traditional or public-domain compositions, played on a synthesized music-box comb.
+  // Notation: note+octave[:beats], R = rest. Each tune is moved into the music-box register automatically.
+  const TUNES = [
+    { name: 'TWINKLE STAR', beat: 0.5, bass: 'C C F C F C G C C F C G C F C G C C F C F C G C',
+      notes: 'C5 C5 G5 G5 A5 A5 G5:2 F5 F5 E5 E5 D5 D5 C5:2 G5 G5 F5 F5 E5 E5 D5:2 G5 G5 F5 F5 E5 E5 D5:2 C5 C5 G5 G5 A5 A5 G5:2 F5 F5 E5 E5 D5 D5 C5:2' },
+    { name: 'LITTLE LAMB', beat: 0.42,
+      notes: 'E5 D5 C5 D5 E5 E5 E5:2 D5 D5 D5:2 E5 G5 G5:2 E5 D5 C5 D5 E5 E5 E5 E5 D5 D5 E5 D5 C5:4' },
+    { name: 'ROW YOUR BOAT', beat: 0.36,
+      notes: 'C5:1.5 C5:1.5 C5:1 D5:.5 E5:1.5 E5:1 D5:.5 E5:1 F5:.5 G5:3 C6:.5 C6:.5 C6:.5 G5:.5 G5:.5 G5:.5 E5:.5 E5:.5 E5:.5 C5:.5 C5:.5 C5:.5 G5:1 F5:.5 E5:1 D5:.5 C5:3' },
+    { name: 'FRERE JACQUES', beat: 0.42,
+      notes: 'C5 D5 E5 C5 C5 D5 E5 C5 E5 F5 G5:2 E5 F5 G5:2 G5:.5 A5:.5 G5:.5 F5:.5 E5 C5 G5:.5 A5:.5 G5:.5 F5:.5 E5 C5 C5 G4 C5:2 C5 G4 C5:2' },
+    { name: 'LONDON BRIDGE', beat: 0.4,
+      notes: 'G5:1.5 A5:.5 G5 F5 E5 F5 G5:2 D5 E5 F5:2 E5 F5 G5:2 G5:1.5 A5:.5 G5 F5 E5 F5 G5:2 D5:2 G5:2 E5 C5:3' },
+    { name: 'GREENSLEEVES', beat: 0.36,
+      notes: 'A4 C5:2 D5 E5:1.5 F5:.5 E5 D5:2 B4 G4:1.5 A4:.5 B4 C5:2 A4 A4:1.5 G#4:.5 A4 B4:2 G#4 E4:2 A4 C5:2 D5 E5:1.5 F5:.5 E5 D5:2 B4 G4:1.5 A4:.5 B4 C5:1.5 B4:.5 A4 G#4:1.5 F#4:.5 G#4 A4:3' },
+    { name: 'AULD LANG SYNE', beat: 0.45,
+      notes: 'G4 C5:1.5 C5:.5 C5 E5 D5:1.5 C5:.5 D5 E5:.5 D5:.5 C5:1.5 C5:.5 E5 G5 A5:3 A5 G5:1.5 E5:.5 E5 C5 D5:1.5 C5:.5 D5 E5:.5 D5:.5 C5:1.5 A4:.5 A4 G4 C5:3' },
+    { name: 'AMAZING GRACE', beat: 0.48,
+      notes: 'G4 C5:2 E5:.5 C5:.5 E5:2 D5 C5:2 A4 G4:2 G4 C5:2 E5:.5 C5:.5 E5:2 D5 G5:3 E5 G5:2 E5:.5 C5:.5 E5:2 D5 C5:2 A4 G4:2 G4 C5:2 E5:.5 C5:.5 E5:2 D5 C5:3' },
+    { name: 'AURA LEE', beat: 0.5,
+      notes: 'G4 C5 B4 C5 D5 A4 D5:2 C5 B4 A4 B4 C5:4 G4 C5 B4 C5 D5 A4 D5:2 C5 B4 A4 B4 C5:4 E5 E5 E5:2 E5 E5 E5:2 E5 D5 C5 D5 E5:4 E5 E5 F5 E5 D5 A4 D5:2 C5 B4 A4 B4 C5:4' },
+    { name: 'SILENT NIGHT', beat: 0.42,
+      notes: 'G4:1.5 A4:.5 G4 E4:3 G4:1.5 A4:.5 G4 E4:3 D5:2 D5 B4:3 C5:2 C5 G4:3 A4:2 A4 C5:1.5 B4:.5 A4 G4:1.5 A4:.5 G4 E4:3 A4:2 A4 C5:1.5 B4:.5 A4 G4:1.5 A4:.5 G4 E4:3 D5:2 D5 F5:1.5 D5:.5 B4 C5:3 E5:3 C5 G4 E4 G4:1.5 F4:.5 D4 C4:6' },
+    { name: 'FÜR ELISE', beat: 0.4,
+      notes: 'E5:.5 D#5:.5 E5:.5 D#5:.5 E5:.5 B4:.5 D5:.5 C5:.5 A4:1.5 C4:.5 E4:.5 A4:.5 B4:1.5 E4:.5 G#4:.5 B4:.5 C5:1.5 E4:.5 E5:.5 D#5:.5 E5:.5 D#5:.5 E5:.5 B4:.5 D5:.5 C5:.5 A4:1.5 C4:.5 E4:.5 A4:.5 B4:1.5 E4:.5 C5:.5 B4:.5 A4:3' },
+    { name: 'ODE TO JOY', beat: 0.42,
+      notes: 'E5 E5 F5 G5 G5 F5 E5 D5 C5 C5 D5 E5 E5:1.5 D5:.5 D5:2 E5 E5 F5 G5 G5 F5 E5 D5 C5 C5 D5 E5 D5:1.5 C5:.5 C5:2 D5 D5 E5 C5 D5 E5:.5 F5:.5 E5 C5 D5 E5:.5 F5:.5 E5 D5 C5 D5 G4:2 E5 E5 F5 G5 G5 F5 E5 D5 C5 C5 D5 E5 D5:1.5 C5:.5 C5:2' },
+    { name: 'BRAHMS LULLABY', beat: 0.4,
+      notes: 'E5:.5 E5:.5 G5:2 E5:.5 E5:.5 G5:2 E5:.5 G5:.5 C6 B5:1.5 A5:.5 A5 G5 D5:.5 E5:.5 F5 D5 D5:.5 E5:.5 F5:2 D5:.5 F5:.5 B5:.5 A5:.5 G5 B5 C6:2 C5:.5 C5:.5 C6:2 A5:.5 F5:.5 G5:2 E5:.5 C5:.5 F5 G5 A5 G5:2 C5:.5 C5:.5 C6:2 A5:.5 F5:.5 G5:2 E5:.5 C5:.5 F5 E5:.5 D5:.5 C5:3' },
+    { name: 'CAN CAN', beat: 0.34,
+      notes: 'C5:2 D5:.5 F5:.5 E5:.5 D5:.5 G5 G5 G5 A5:.5 E5:.5 F5 F5 F5 G5:.5 D5:.5 E5 E5 E5:.5 E5:.5 D5:.5 C5:.5 C6:.5 B5:.5 A5:.5 G5:.5 F5:.5 E5:.5 D5:.5 C5:2 D5:.5 F5:.5 E5:.5 D5:.5 G5 G5 G5 A5:.5 E5:.5 F5 F5 F5 G5:.5 D5:.5 E5:.5 G5:.5 D5:.5 E5:.5 C5:2' },
+    { name: 'MOUNTAIN KING', beat: 0.42,
+      notes: 'A4:.5 B4:.5 C5:.5 D5:.5 E5:.5 C5:.5 E5 D#5:.5 B4:.5 D#5 D5:.5 A#4:.5 D5 A4:.5 B4:.5 C5:.5 D5:.5 E5:.5 C5:.5 E5:.5 A5:.5 G5:.5 E5:.5 C5:.5 E5:.5 G5:2' },
+    { name: 'JINGLE BELLS', beat: 0.36,
+      notes: 'E5 E5 E5:2 E5 E5 E5:2 E5 G5 C5:1.5 D5:.5 E5:4 F5 F5 F5:1.5 F5:.5 F5 E5 E5 E5:.5 E5:.5 E5 D5 D5 E5 D5:2 G5:2 E5 E5 E5:2 E5 E5 E5:2 E5 G5 C5:1.5 D5:.5 E5:4 F5 F5 F5:1.5 F5:.5 F5 E5 E5 E5:.5 E5:.5 G5 G5 F5 D5 C5:4' },
+    { name: 'OH SUSANNA', beat: 0.34,
+      notes: 'C5:.5 D5:.5 E5 G5 G5:1.5 A5:.5 G5 E5 C5:1.5 D5:.5 E5 E5 D5 C5 D5:3 C5:.5 D5:.5 E5 G5 G5:1.5 A5:.5 G5 E5 C5:1.5 D5:.5 E5 E5 D5 D5 C5:4 F5:2 F5:2 A5 A5:2 A5 G5 G5 E5 C5 D5:3 C5:.5 D5:.5 E5 G5 G5:1.5 A5:.5 G5 E5 C5:1.5 D5:.5 E5 E5 D5 D5 C5:4' },
+    { name: 'MORNING MOOD', beat: 0.34,
+      notes: 'G5 E5 D5 C5 D5 E5 G5 E5 D5 C5 D5:.5 E5:.5 D5:.5 E5:.5 G5 E5 G5 A5 E5 A5 G5 E5 D5 C5:3' }
+  ];
   const music = (() => {
-    const N = { C: 84, D: 86, E: 88, F: 89, G: 91, A: 93 };
-    const phrase = s => s.split(' ').map(x => [N[x[0]], x.length > 1 ? 2 : 1]);   // "G-" = two beats
-    const A1 = 'C C G G A A G- F F E E D D C-', B1 = 'G G F F E E D- G G F F E E D-';
-    const melody = phrase(`${A1} ${B1} ${A1}`);
-    // bass note every two beats, two octaves down
-    const bassRoots = 'C C F C F C G C C F C G C F C G C C F C F C G C'.split(' ').map(x => N[x] - 24);
-    const BEAT = 0.5;
-    let timer = 0, next = 0, idx = 0, playing = false;
+    const SEMI = { C: 0, 'C#': 1, D: 2, 'D#': 3, E: 4, F: 5, 'F#': 6, G: 7, 'G#': 8, A: 9, 'A#': 10, B: 11 };
+    const toMidi = n => { const m = n.match(/^([A-G]#?)(\d)$/); return 12 * (+m[2] + 1) + SEMI[m[1]]; };
+    TUNES.forEach(t => {
+      t.seq = t.notes.split(/\s+/).map(tok => {
+        const [n, d] = tok.split(':');
+        return [n === 'R' ? null : toMidi(n), d ? parseFloat(d) : 1];
+      });
+      const ms = t.seq.filter(x => x[0] !== null).map(x => x[0]);
+      const avg = ms.reduce((a, b) => a + b, 0) / ms.length;
+      t.shift = 12 * Math.round((84 - avg) / 12);   // sit around the top of a music-box comb
+      if (t.bass) t.bassSeq = t.bass.split(' ').map(x => toMidi(x + '4') + t.shift - 12);
+    });
+    let timer = 0, next = 0, idx = 0, beat = 0, playing = false;
+    let tuneIdx = Math.min(store.get('sfp-tune', 0), TUNES.length - 1);
     const hz = m => 440 * Math.pow(2, (m - 69) / 12);
     function tine(t, midi, vol){
       const c = sfx.ctx, f = hz(midi) * (1 + (Math.random() - 0.5) * 0.002);
@@ -728,30 +785,36 @@ body.ringing #flaps .flap{animation:ring .5s steps(1) infinite;color:var(--accen
       });
     }
     function schedule(){
-      const c = sfx.ctx;
+      const c = sfx.ctx, tune = TUNES[tuneIdx];
       while (next < c.currentTime + 0.4) {
-        // where we are in beats, to place the bass
-        let beat = 0; for (let i = 0; i < idx; i++) beat += melody[i][1];
-        const [m, len] = melody[idx];
-        tine(next, m, 0.16);
-        if (beat % 2 === 0) tine(next, bassRoots[(beat / 2) % bassRoots.length], 0.09);
-        if (len === 2) tine(next + BEAT, bassRoots[((beat + 1) / 2 | 0) % bassRoots.length] + 7, 0.05);
-        next += len * BEAT * (0.97 + Math.random() * 0.06);
-        idx++;
-        if (idx >= melody.length) { idx = 0; next += BEAT * 2; }
+        const [m, len] = tune.seq[idx];
+        if (m !== null) tine(next, m + tune.shift, 0.16);
+        if (tune.bassSeq && beat % 2 === 0) tine(next, tune.bassSeq[(beat / 2) % tune.bassSeq.length], 0.09);
+        next += len * tune.beat * (0.97 + Math.random() * 0.06);
+        beat += len; idx++;
+        if (idx >= tune.seq.length) { idx = 0; beat = 0; next += tune.beat * 2; }
       }
     }
+    function begin(){ idx = 0; beat = 0; next = sfx.ctx.currentTime + 0.12; }
     return {
+      get name(){ return TUNES[tuneIdx].name; },
+      get playing(){ return playing; },
       start(){
         if (playing || !sfx.ctx) return;
-        playing = true; idx = 0; next = sfx.ctx.currentTime + 0.1;
+        playing = true; begin();
         schedule(); timer = setInterval(schedule, 100);
       },
       stop(){ playing = false; clearInterval(timer); },
+      change(dir){
+        tuneIdx = (tuneIdx + dir + TUNES.length) % TUNES.length;
+        store.set('sfp-tune', tuneIdx);
+        if (playing) begin();
+      },
       preview(){
         if (!sfx.ctx) return;
-        const t = sfx.ctx.currentTime + 0.05;
-        [N.C, N.C, N.G, N.G].forEach((m, i) => tine(t + i * 0.25, m, 0.16));
+        const tune = TUNES[tuneIdx], t0 = sfx.ctx.currentTime + 0.05;
+        let t = t0;
+        tune.seq.slice(0, 4).forEach(([m, len]) => { if (m !== null) tine(t, m + tune.shift, 0.16); t += len * tune.beat * 0.6; });
       }
     };
   })();
@@ -857,7 +920,8 @@ body.ringing #flaps .flap{animation:ring .5s steps(1) infinite;color:var(--accen
     document.querySelectorAll('.profile').forEach(b => b.setAttribute('aria-selected', b.dataset.profile === p));
     const isTasks = p !== 'pomodoro';
     $('#modes').hidden = isTasks;
-    $('#tasks').hidden = !isTasks;
+    $('#tasksWrap').hidden = !isTasks;
+    requestAnimationFrame(updateArrows);
     $('#resetList').hidden = !isTasks;
     $('#musicBtn').hidden = p !== 'kids';
     $('#note').textContent = PROFILES[p].note;
@@ -878,6 +942,16 @@ body.ringing #flaps .flap{animation:ring .5s steps(1) infinite;color:var(--accen
       wrap.appendChild(b);
     }));
   }
+  const tasksEl = $('#tasks');
+  function updateArrows(){
+    const max = tasksEl.scrollWidth - tasksEl.clientWidth;
+    $('#scrollL').hidden = tasksEl.scrollLeft <= 4;
+    $('#scrollR').hidden = tasksEl.scrollLeft >= max - 4;
+  }
+  tasksEl.addEventListener('scroll', updateArrows, { passive: true });
+  addEventListener('resize', updateArrows);
+  $('#scrollL').addEventListener('click', () => { haptic(); tasksEl.scrollBy({ left: -tasksEl.clientWidth * 0.75, behavior: 'smooth' }); });
+  $('#scrollR').addEventListener('click', () => { haptic(); tasksEl.scrollBy({ left: tasksEl.clientWidth * 0.75, behavior: 'smooth' }); });
   function buildDots(){
     const dots = $('#dots');
     if (state.profile === 'pomodoro') { dots.innerHTML = '<i></i><i></i><i></i><i></i>'; return; }
@@ -895,7 +969,9 @@ body.ringing #flaps .flap{animation:ring .5s steps(1) infinite;color:var(--accen
       b.setAttribute('aria-pressed', k === state.mode);
       b.classList.toggle('done', state.ticked.includes(k));
       b.querySelector('.t-min').textContent = `${state.durations[k]} min`;
+      if (k === state.mode && !b.hidden) b.scrollIntoView({ inline: 'nearest', block: 'nearest', behavior: 'smooth' });
     });
+    requestAnimationFrame(updateArrows);
   }
   function renderStatus(){
     if (state.profile !== 'pomodoro') {
@@ -960,7 +1036,26 @@ body.ringing #flaps .flap{animation:ring .5s steps(1) infinite;color:var(--accen
 
   const musicBtn = $('#musicBtn');
   const renderMusic = () => { musicBtn.setAttribute('aria-pressed', state.music); musicBtn.querySelector('span').textContent = state.music ? 'Music box on' : 'Music box off'; };
+  // Easter egg: while the tune is playing, swipe sideways across the music box button to change tunes.
+  let swipe = null, swiped = false, nameTimer = 0;
+  musicBtn.style.touchAction = 'pan-y';
+  musicBtn.addEventListener('pointerdown', e => { swipe = { x: e.clientX, y: e.clientY }; swiped = false; });
+  musicBtn.addEventListener('pointerup', e => {
+    if (!swipe) return;
+    const dx = e.clientX - swipe.x, dy = e.clientY - swipe.y;
+    swipe = null;
+    if (Math.abs(dx) > 35 && Math.abs(dx) > Math.abs(dy) * 1.5 && music.playing) {
+      swiped = true;
+      haptic();
+      music.change(dx < 0 ? 1 : -1);
+      renderWord(music.name);
+      clearTimeout(nameTimer);
+      nameTimer = setTimeout(() => renderWord(TASKS[state.mode].board), 2500);
+    }
+  });
+  musicBtn.addEventListener('pointercancel', () => { swipe = null; });
   musicBtn.addEventListener('click', () => {
+    if (swiped) { swiped = false; return; }
     haptic(); sfx.unlock();
     state.music = !state.music; store.set('sfp-music', state.music); renderMusic();
     if (state.running) syncMusic(); else if (state.music) setTimeout(() => music.preview(), 60);
