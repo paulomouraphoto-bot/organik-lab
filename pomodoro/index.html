@@ -243,6 +243,7 @@ body[data-look="minimal"] .step{background:transparent;border-color:var(--panel-
         <button class="btn" id="reset">Reset</button>
         <button class="btn" id="sound" aria-pressed="true">Sound</button>
       </div>
+      <button class="btn" id="flipSound" aria-pressed="false">Flip sound off</button>
       <label class="look-toggle" for="look"><input type="checkbox" id="look" role="switch"><span class="track" aria-hidden="true"></span><span>Minimal look</span></label>
       <p class="note" id="note">Four focus rounds, then a long break. Space starts and pauses.</p>
     </div>
@@ -271,6 +272,7 @@ body[data-look="minimal"] .step{background:transparent;border-color:var(--panel-
     remaining: 0,
     done: 0,
     sound: store.get('sfp-sound', true),
+    flip: store.get('sfp-flip', false),
   };
   state.remaining = state.durations.focus * 60;
 
@@ -315,7 +317,11 @@ body[data-look="minimal"] .step{background:transparent;border-color:var(--panel-
     const mm = String(Math.floor(s / 60)).padStart(2, '0');
     const ss = String(s % 60).padStart(2, '0');
     const str = mm + ss;
-    flaps.forEach((f, i) => setDigit(f, str[i]));
+    let n = 0;
+    flaps.forEach((f, i) => {
+      if (f.value !== null && f.value !== str[i]) sfx.flap(n++ * 0.03);
+      setDigit(f, str[i]);
+    });
     document.title = state.running ? `${mm}:${ss} · ${LABEL[state.mode]}` : 'Split-Flap Pomodoro';
     renderDial();
   }
@@ -476,6 +482,34 @@ body[data-look="minimal"] .step{background:transparent;border-color:var(--panel-
       src.connect(bp).connect(g).connect(c.destination);
       src.start(t);
     },
+    noise(){
+      if (!this._noise) {
+        const c = this.ctx, len = Math.floor(c.sampleRate * 0.06);
+        const b = c.createBuffer(1, len, c.sampleRate), d = b.getChannelData(0);
+        for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+        this._noise = b;
+      }
+      return this._noise;
+    },
+    clack(t, freq, gain, decay){
+      const c = this.ctx;
+      const src = c.createBufferSource(); src.buffer = this.noise();
+      const bp = c.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = freq; bp.Q.value = 0.9;
+      const g = c.createGain();
+      g.gain.setValueAtTime(gain, t);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + decay);
+      src.connect(bp).connect(g).connect(c.destination);
+      src.start(t); src.stop(t + decay + 0.01);
+    },
+    flap(delay = 0){
+      // two-part clack: the leaf letting go, then landing on the card below (matches the flip animation)
+      if (!state.flip || !this.ctx || this.ctx.state !== 'running') return;
+      const t = this.ctx.currentTime + delay;
+      const v = 0.85 + Math.random() * 0.3;
+      this.clack(t, 3200 * v, 0.18, 0.012);
+      this.clack(t + 0.15, 1700 * v, 0.42, 0.028);
+      this.clack(t + 0.15, 420, 0.25, 0.03);
+    },
     chime(){
       if (!state.sound || !this.ctx) return;
       const c = this.ctx, t0 = c.currentTime;
@@ -573,6 +607,10 @@ body[data-look="minimal"] .step{background:transparent;border-color:var(--panel-
   });
   const soundBtn = $('#sound');
   const renderSound = () => { soundBtn.setAttribute('aria-pressed', state.sound); soundBtn.textContent = state.sound ? 'Sound on' : 'Sound off'; };
+  const flipBtn = $('#flipSound');
+  const renderFlip = () => { flipBtn.setAttribute('aria-pressed', state.flip); flipBtn.textContent = state.flip ? 'Flip sound on' : 'Flip sound off'; };
+  flipBtn.addEventListener('click', () => { haptic(); sfx.unlock(); state.flip = !state.flip; store.set('sfp-flip', state.flip); renderFlip(); if (state.flip) sfx.flap(); });
+  renderFlip();
   soundBtn.addEventListener('click', () => { haptic(); state.sound = !state.sound; store.set('sfp-sound', state.sound); sfx.unlock(); renderSound(); });
   document.querySelectorAll('.mode').forEach(b => b.addEventListener('click', () => { haptic(); setMode(b.dataset.mode); }));
   document.addEventListener('keydown', e => {
