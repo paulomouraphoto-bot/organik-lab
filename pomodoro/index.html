@@ -37,6 +37,7 @@ body{
 body[data-mode="short"]{--accent:var(--teal)}
 body[data-mode="long"]{--accent:var(--violet)}
 *{box-sizing:border-box}
+[hidden]{display:none!important}
 button{font:inherit;color:inherit}
 :focus-visible{outline:2px solid var(--accent);outline-offset:3px}
 
@@ -198,6 +199,11 @@ body.running .colon i{animation:blink 1s steps(1) infinite}
 .row{display:flex;gap:10px}
 .row .btn{flex:1}
 .btn[aria-pressed="false"]{color:var(--muted)}
+.btn.music{display:flex;align-items:center;justify-content:center;gap:10px}
+.btn.music .crank{width:22px;height:22px;flex:none}
+.btn.music[aria-pressed="true"]{border-color:var(--accent);color:var(--ink)}
+body.music-on .btn.music .crank{animation:crank 1.6s linear infinite}
+@keyframes crank{to{transform:rotate(360deg)}}
 .note{font-size:13px;color:var(--muted);line-height:1.5;margin:4px 0 0}
 
 /* look toggle */
@@ -253,6 +259,7 @@ body.ringing #flaps .flap{animation:ring .5s steps(1) infinite;color:var(--accen
   body.ringing #flaps .flap{animation:none}
   .flap.flipping .leaf-top,.flap.flipping .leaf-bottom{animation:none}
   body.running .colon i{animation:none}
+  body.music-on .btn.music .crank{animation:none}
 }
 </style>
 </head>
@@ -298,6 +305,7 @@ body.ringing #flaps .flap{animation:ring .5s steps(1) infinite;color:var(--accen
         <button class="btn" id="reset">Reset</button>
         <button class="btn" id="sound" aria-pressed="true">Sound</button>
       </div>
+      <button class="btn music" id="musicBtn" aria-pressed="false" hidden><svg class="crank" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3.2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 8.8V3h5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="18.5" cy="3" r="2" fill="currentColor"/></svg><span>Music box off</span></button>
       <button class="btn" id="flipSound" aria-pressed="false">Flip sound off</button>
       <label class="look-toggle" for="panic"><input type="checkbox" id="panic" role="switch"><span class="track" aria-hidden="true"></span><span>Panic mode · flaps clatter in the last 10 seconds</span></label>
       <label class="look-toggle" for="look"><input type="checkbox" id="look" role="switch"><span class="track" aria-hidden="true"></span><span>Minimal look</span></label>
@@ -330,7 +338,14 @@ body.ringing #flaps .flap{animation:ring .5s steps(1) infinite;color:var(--accen
     teeth: '<svg viewBox="0 0 48 48"><rect x="4" y="29" width="28" height="7" rx="3.5" transform="rotate(-20 18 32)" fill="currentColor"/><rect x="28" y="17" width="15" height="9" rx="3" transform="rotate(-20 35 21)" fill="currentColor"/><g stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M30 14l-1.8-5"/><path d="M34.5 12.4l-1.8-5"/><path d="M39 10.8l-1.8-5"/></g><circle cx="11" cy="14" r="4" fill="none" stroke="currentColor" stroke-width="2.2"/><circle cx="19" cy="9" r="2.4" fill="none" stroke="currentColor" stroke-width="2"/></svg>',
     breakfast: '<svg viewBox="0 0 48 48"><path d="M6 24h36a18 18 0 0 1-36 0z" fill="currentColor"/><rect x="15" y="40" width="18" height="3.5" rx="1.75" fill="currentColor"/><g fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M17 18c-3-3 3-5 0-9"/><path d="M24 18c-3-3 3-5 0-9"/><path d="M31 18c-3-3 3-5 0-9"/></g></svg>',
     dressed: '<svg viewBox="0 0 48 48"><path d="M17 8l-11 7 5 8 5-3v20a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V20l5 3 5-8-11-7c-1.2 3.4-4 5.5-7 5.5S18.2 11.4 17 8z" fill="currentColor"/><circle cx="24" cy="27" r="3.2" fill="#141517" opacity=".2"/></svg>',
+    shoes: '<svg viewBox="0 0 48 48"><path d="M4 31c0-7 3-13 7-16l6 6c3 2.5 7 3.5 11 3.6l9 .9c4.5.5 7 3 7 6.5V34H4z" fill="currentColor"/><rect x="4" y="34" width="40" height="6" rx="3" fill="currentColor" opacity=".7"/><g stroke="#141517" stroke-width="2" stroke-linecap="round" opacity=".3"><path d="M14 21l4 3M17 18l4 3"/></g></svg>',
+    bag: '<svg viewBox="0 0 48 48"><path d="M18 13v-2a6 6 0 0 1 12 0v2" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"/><rect x="10" y="13" width="28" height="29" rx="8" fill="currentColor"/><rect x="16" y="28" width="16" height="10" rx="3" fill="#141517" opacity=".2"/><rect x="21" y="26" width="6" height="3" rx="1.5" fill="#141517" opacity=".3"/></svg>',
+    book: '<svg viewBox="0 0 48 48"><path d="M23 13C19 10 12 9 5 10v27c7-1 13 0 18 3z" fill="currentColor"/><path d="M25 13c4-3 11-4 18-3v27c-7-1-13 0-18 3z" fill="currentColor"/><path d="M11 17h7M11 22h7M30 17h7M30 22h7" stroke="#141517" stroke-width="2" stroke-linecap="round" opacity=".25"/></svg>',
     focus: '<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="3"><circle cx="24" cy="24" r="17"/><circle cx="24" cy="24" r="9"/><circle cx="24" cy="24" r="2" fill="currentColor"/></svg>',
+    invoice: '<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"><path d="M11 5h26v38l-4.3-3-4.4 3-4.3-3-4.3 3-4.4-3-4.3 3z"/><path d="M29 17.5a6 6 0 1 0 0 9"/><path d="M17 20.5h9M17 24h9"/></svg>',
+    design: '<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"><path d="M24 43L13 25l4.5-15h13L35 25z"/><path d="M24 43V30"/><circle cx="24" cy="26" r="3"/><path d="M17 10h14"/></svg>',
+    phone: '<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="3" stroke-linejoin="round"><path d="M13 7h6l3 9-4 3a24 24 0 0 0 11 11l3-4 9 3v6a4 4 0 0 1-4 4C21 39 9 27 9 11a4 4 0 0 1 4-4z"/></svg>',
+    calendar: '<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"><rect x="7" y="10" width="34" height="31" rx="3"/><path d="M7 18h34M16 6v8M32 6v8"/><path d="M14 25h4M22 25h4M30 25h4M14 32h4M22 32h4" stroke-width="3.2"/></svg>',
     email: '<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="3" stroke-linejoin="round"><rect x="6" y="12" width="36" height="25" rx="3"/><path d="M7 14l17 13 17-13"/></svg>',
     admin: '<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="3" stroke-linejoin="round"><path d="M6 15a3 3 0 0 1 3-3h10l4 4h16a3 3 0 0 1 3 3v16a3 3 0 0 1-3 3H9a3 3 0 0 1-3-3z"/><path d="M6 21h36"/></svg>',
     call: '<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="3" stroke-linejoin="round"><path d="M9 10h30a3 3 0 0 1 3 3v16a3 3 0 0 1-3 3H22l-8 7v-7H9a3 3 0 0 1-3-3V13a3 3 0 0 1 3-3z"/><path d="M15 19h18M15 25h11" stroke-linecap="round"/></svg>',
@@ -345,23 +360,27 @@ body.ringing #flaps .flap{animation:ring .5s steps(1) infinite;color:var(--accen
     'k-teeth':     { label: 'Brush teeth', board: 'BRUSH TEETH', min: 3,  color: '#5cc8e8', icon: 'teeth' },
     'k-breakfast': { label: 'Breakfast',   board: 'BREAKFAST',   min: 15, color: '#f4b63f', icon: 'breakfast' },
     'k-dressed':   { label: 'Get dressed', board: 'GET DRESSED', min: 5,  color: '#7bd389', icon: 'dressed' },
-    'w-deep':   { label: 'Deep work', board: 'DEEP WORK', min: 50, color: '#f4b63f', icon: 'focus' },
-    'w-email':  { label: 'Emails',    board: 'EMAILS',    min: 15, color: '#62c7a8', icon: 'email' },
-    'w-admin':  { label: 'Admin',     board: 'ADMIN',     min: 20, color: '#8fb0d9', icon: 'admin' },
-    'w-call':   { label: 'Call prep', board: 'CALL PREP', min: 10, color: '#e9a36b', icon: 'call' },
-    'w-review': { label: 'Review',    board: 'REVIEW',    min: 25, color: '#a98cf5', icon: 'review' }
+    'k-shoes':     { label: 'Shoes on',    board: 'SHOES ON',    min: 3,  color: '#ff9ec4', icon: 'shoes' },
+    'k-bag':       { label: 'Pack bag',    board: 'PACK BAG',    min: 5,  color: '#ffd45c', icon: 'bag' },
+    'k-reading':   { label: 'Reading',     board: 'READING',     min: 15, color: '#6fd6c0', icon: 'book' },
+    'w-email':    { label: 'Read emails',  board: 'READ EMAILS', min: 30, color: '#62c7a8', icon: 'email' },
+    'w-invoice':  { label: 'Invoicing',    board: 'INVOICING',   min: 15, color: '#f4b63f', icon: 'invoice' },
+    'w-admin':    { label: 'Admin',        board: 'ADMIN',       min: 40, color: '#8fb0d9', icon: 'admin' },
+    'w-design':   { label: 'Design work',  board: 'DESIGN WORK', min: 50, color: '#a98cf5', icon: 'design' },
+    'w-call':     { label: 'Client call',  board: 'CLIENT CALL', min: 20, color: '#e9a36b', icon: 'phone' },
+    'w-posts':    { label: 'Plan posts',   board: 'PLAN POSTS',  min: 25, color: '#e98fb0', icon: 'calendar' }
   };
   const PROFILES = {
     pomodoro: { keys: ['focus', 'short', 'long'], note: 'Four focus rounds, then a long break. Space starts and pauses.' },
-    kids: { keys: ['k-lego', 'k-pyjamas', 'k-teeth', 'k-breakfast', 'k-dressed'], note: 'Tap a job, then Start. Each finished job gets a tick.', allDone: 'WELL DONE', allDoneMsg: 'Every job done. Brilliant work!' },
-    work: { keys: ['w-deep', 'w-email', 'w-admin', 'w-call', 'w-review'], note: 'Pick a task, set the time, Start. Finished tasks get a tick.', allDone: 'ALL CLEAR', allDoneMsg: 'List cleared. Nice work.' }
+    kids: { keys: ['k-dressed', 'k-breakfast', 'k-teeth', 'k-shoes', 'k-bag', 'k-lego', 'k-reading', 'k-pyjamas'], note: 'Tap a job, then Start. Turn on the music box to play a tune while the clock runs.', allDone: 'WELL DONE', allDoneMsg: 'Every job done. Brilliant work!' },
+    work: { keys: ['w-email', 'w-invoice', 'w-admin', 'w-design', 'w-call', 'w-posts'], note: 'Pick a task, set the time, Start. Finished tasks get a tick.', allDone: 'ALL CLEAR', allDoneMsg: 'List cleared. Nice work.' }
   };
   const LABEL = new Proxy({}, { get: (_, k) => TASKS[k]?.label || '' });
   const today = () => new Date().toDateString();
   const state = {
     mode: 'focus',
     profile: PROFILES[store.get('sfp-profile', 'pomodoro')] ? store.get('sfp-profile', 'pomodoro') : 'pomodoro',
-    durations: Object.assign(Object.fromEntries(Object.entries(TASKS).map(([k, t]) => [k, t.min])), store.get('sfp-durations', {})),
+    durations: Object.assign(Object.fromEntries(Object.entries(TASKS).map(([k, t]) => [k, t.min])), (({ focus, short, long }) => JSON.parse(JSON.stringify({ focus, short, long })))(store.get('sfp-durations', {})), store.get('sfp-dur2', {})),
     ticked: (() => { const d = store.get('sfp-ticked', null); return d && d.date === today() ? d.keys : []; })(),
     running: false,
     endAt: 0,
@@ -370,6 +389,7 @@ body.ringing #flaps .flap{animation:ring .5s steps(1) infinite;color:var(--accen
     sound: store.get('sfp-sound', true),
     flip: store.get('sfp-flip', false),
     panic: store.get('sfp-panic', true),
+    music: store.get('sfp-music', false),
   };
   state.remaining = state.durations.focus * 60;
 
@@ -522,7 +542,7 @@ body.ringing #flaps .flap{animation:ring .5s steps(1) infinite;color:var(--accen
     if (!changed) return;
     state.durations[state.mode] = min;
     state.remaining = min * 60;
-    store.set('sfp-durations', state.durations);
+    store.set('sfp-dur2', state.durations);
     if (withTick) { sfx.tick(); haptic(); }
     renderModes();
     renderTime();
@@ -683,6 +703,65 @@ body.ringing #flaps .flap{animation:ring .5s steps(1) infinite;color:var(--accen
     }
   };
 
+  /* ---------- music box ---------- */
+  // "Twinkle, Twinkle, Little Star" (traditional) played on a synthesized music-box comb.
+  const music = (() => {
+    const N = { C: 84, D: 86, E: 88, F: 89, G: 91, A: 93 };
+    const phrase = s => s.split(' ').map(x => [N[x[0]], x.length > 1 ? 2 : 1]);   // "G-" = two beats
+    const A1 = 'C C G G A A G- F F E E D D C-', B1 = 'G G F F E E D- G G F F E E D-';
+    const melody = phrase(`${A1} ${B1} ${A1}`);
+    // bass note every two beats, two octaves down
+    const bassRoots = 'C C F C F C G C C F C G C F C G C C F C F C G C'.split(' ').map(x => N[x] - 24);
+    const BEAT = 0.5;
+    let timer = 0, next = 0, idx = 0, playing = false;
+    const hz = m => 440 * Math.pow(2, (m - 69) / 12);
+    function tine(t, midi, vol){
+      const c = sfx.ctx, f = hz(midi) * (1 + (Math.random() - 0.5) * 0.002);
+      [[1, 1, 1.6], [2.0, 0.28, 0.6], [5.4, 0.1, 0.15]].forEach(([m, lvl, len]) => {
+        const o = c.createOscillator(), g = c.createGain();
+        o.type = 'sine'; o.frequency.value = f * m;
+        g.gain.setValueAtTime(0.0001, t);
+        g.gain.exponentialRampToValueAtTime(vol * lvl, t + 0.003);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + len);
+        o.connect(g).connect(c.destination);
+        o.start(t); o.stop(t + len + 0.05);
+      });
+    }
+    function schedule(){
+      const c = sfx.ctx;
+      while (next < c.currentTime + 0.4) {
+        // where we are in beats, to place the bass
+        let beat = 0; for (let i = 0; i < idx; i++) beat += melody[i][1];
+        const [m, len] = melody[idx];
+        tine(next, m, 0.16);
+        if (beat % 2 === 0) tine(next, bassRoots[(beat / 2) % bassRoots.length], 0.09);
+        if (len === 2) tine(next + BEAT, bassRoots[((beat + 1) / 2 | 0) % bassRoots.length] + 7, 0.05);
+        next += len * BEAT * (0.97 + Math.random() * 0.06);
+        idx++;
+        if (idx >= melody.length) { idx = 0; next += BEAT * 2; }
+      }
+    }
+    return {
+      start(){
+        if (playing || !sfx.ctx) return;
+        playing = true; idx = 0; next = sfx.ctx.currentTime + 0.1;
+        schedule(); timer = setInterval(schedule, 100);
+      },
+      stop(){ playing = false; clearInterval(timer); },
+      preview(){
+        if (!sfx.ctx) return;
+        const t = sfx.ctx.currentTime + 0.05;
+        [N.C, N.C, N.G, N.G].forEach((m, i) => tine(t + i * 0.25, m, 0.16));
+      }
+    };
+  })();
+  const musicWanted = () => state.profile === 'kids' && state.music;
+  function syncMusic(){
+    const on = musicWanted() && state.running;
+    document.body.classList.toggle('music-on', on);
+    on ? music.start() : music.stop();
+  }
+
   /* ---------- timer ---------- */
   let loop = 0, wake = null;
   function start(){
@@ -693,6 +772,7 @@ body.ringing #flaps .flap{animation:ring .5s steps(1) infinite;color:var(--accen
     clearInterval(loop);
     loop = setInterval(tick, 200);
     sfx.unlock(); sfx.keepAlive(true);
+    syncMusic();
     document.body.classList.add('running');
     $('#go').textContent = 'Pause';
     try { navigator.wakeLock?.request('screen').then(w => wake = w).catch(() => {}); } catch {}
@@ -702,6 +782,7 @@ body.ringing #flaps .flap{animation:ring .5s steps(1) infinite;color:var(--accen
     state.running = false;
     clearInterval(loop);
     sfx.keepAlive(false);
+    syncMusic();
     document.body.classList.remove('running');
     $('#go').textContent = state.remaining < state.durations[state.mode] * 60 && state.remaining > 0 ? 'Resume' : 'Start';
     try { wake?.release(); } catch {}
@@ -757,7 +838,7 @@ body.ringing #flaps .flap{animation:ring .5s steps(1) infinite;color:var(--accen
   }
   function setMode(m){
     clearTimeout(ringTimer); pendingNext = null; document.body.classList.remove('ringing');
-    if (state.running) { state.running = false; clearInterval(loop); document.body.classList.remove('running'); }
+    if (state.running) { state.running = false; clearInterval(loop); document.body.classList.remove('running'); syncMusic(); }
     state.mode = m;
     state.remaining = state.durations[m] * 60;
     document.body.dataset.mode = m;
@@ -778,6 +859,7 @@ body.ringing #flaps .flap{animation:ring .5s steps(1) infinite;color:var(--accen
     $('#modes').hidden = isTasks;
     $('#tasks').hidden = !isTasks;
     $('#resetList').hidden = !isTasks;
+    $('#musicBtn').hidden = p !== 'kids';
     $('#note').textContent = PROFILES[p].note;
     buildDots();
     const keys = PROFILES[p].keys;
@@ -840,7 +922,7 @@ body.ringing #flaps .flap{animation:ring .5s steps(1) infinite;color:var(--accen
   $('#go').addEventListener('click', () => { haptic(); sfx.unlock(); state.running ? stop() : start(); });
   $('#reset').addEventListener('click', () => {
     haptic();
-    if (state.running) { state.running = false; clearInterval(loop); document.body.classList.remove('running'); }
+    if (state.running) { state.running = false; clearInterval(loop); document.body.classList.remove('running'); syncMusic(); }
     state.remaining = state.durations[state.mode] * 60;
     $('#go').textContent = 'Start';
     renderStatus(); renderTime();
@@ -876,6 +958,14 @@ body.ringing #flaps .flap{animation:ring .5s steps(1) infinite;color:var(--accen
   applyLook(store.get('sfp-look', 'classic') === 'minimal');
   lookBox.addEventListener('change', () => { haptic(); applyLook(lookBox.checked); store.set('sfp-look', lookBox.checked ? 'minimal' : 'classic'); });
 
+  const musicBtn = $('#musicBtn');
+  const renderMusic = () => { musicBtn.setAttribute('aria-pressed', state.music); musicBtn.querySelector('span').textContent = state.music ? 'Music box on' : 'Music box off'; };
+  musicBtn.addEventListener('click', () => {
+    haptic(); sfx.unlock();
+    state.music = !state.music; store.set('sfp-music', state.music); renderMusic();
+    if (state.running) syncMusic(); else if (state.music) setTimeout(() => music.preview(), 60);
+  });
+  renderMusic();
   $('#resetList').addEventListener('click', () => {
     haptic();
     const keys = PROFILES[state.profile].keys;
