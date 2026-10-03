@@ -1,0 +1,259 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Telly</title>
+<meta name="theme-color" content="#141517">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Telly">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&display=swap">
+<style>
+/* Organik Labs house style: one instrument panel — the screen up top, split-flap channel board, then the channel grid. */
+:root{
+  color-scheme:dark;
+  --housing:#141517; --panel:#1c1d20; --edge:#2a2b2f; --flap:#2b2c30; --flap-lo:#232427; --flap-hi:#323337;
+  --ink:#f1ebdd; --muted:#8c8a84; --amber:#f4b63f; --teal:#62c7a8;
+  --f-flap:"Barlow Condensed","Arial Narrow","Helvetica Neue",Arial,sans-serif;
+  --f-ui:"Barlow","Helvetica Neue",Arial,sans-serif;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html{height:100%}
+body{margin:0;min-height:100%;background:var(--housing);color:var(--ink);font-family:var(--f-ui);font-size:15px;-webkit-font-smoothing:antialiased;
+  padding:max(16px,env(safe-area-inset-top)) 16px max(16px,env(safe-area-inset-bottom))}
+button,input{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--amber);outline-offset:3px}
+
+.device{width:100%;max-width:900px;margin:0 auto;background:linear-gradient(180deg,#202124,var(--panel));border:1px solid var(--edge);border-radius:22px;
+  padding:clamp(16px,3.5vw,30px);box-shadow:0 30px 60px -20px rgba(0,0,0,.7),inset 0 1px 0 rgba(255,255,255,.05);display:flex;flex-direction:column;gap:18px}
+
+/* the set */
+.screen{position:relative;aspect-ratio:16/9;background:#050506;border-radius:14px;overflow:hidden;
+  box-shadow:inset 0 0 0 6px #0c0c0e,inset 0 0 40px rgba(0,0,0,.9),0 1px 0 rgba(255,255,255,.04)}
+.screen video{width:100%;height:100%;display:block;background:#000}
+.static{position:absolute;inset:0;display:grid;place-items:center;text-align:center;padding:20px;color:var(--muted);
+  background:repeating-radial-gradient(circle at 30% 40%,rgba(255,255,255,.035) 0 1px,transparent 1px 3px),#08080a}
+.static b{display:block;font-family:var(--f-flap);font-weight:700;font-size:clamp(20px,4vw,28px);letter-spacing:.24em;text-transform:uppercase;color:var(--ink);margin-bottom:6px}
+.static button{margin-top:12px}
+.live{position:absolute;top:12px;left:12px;font-family:var(--f-flap);font-weight:700;font-size:12px;letter-spacing:.2em;padding:4px 8px;border-radius:4px;background:rgba(0,0,0,.55);color:var(--amber);pointer-events:none}
+.live::before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;background:#e0553b;margin-right:6px;vertical-align:1px}
+
+/* split-flap channel board */
+.board{display:flex;flex-direction:column;align-items:center;gap:8px}
+.flaps{display:flex;flex-wrap:wrap;justify-content:center;gap:3px;min-height:46px}
+.t{position:relative;width:26px;height:40px;border-radius:5px;background:linear-gradient(180deg,var(--flap-hi) 0 50%,var(--flap-lo) 50% 100%);
+  box-shadow:0 3px 6px rgba(0,0,0,.45);display:grid;place-items:center;font-family:var(--f-flap);font-weight:700;font-size:26px;line-height:1;color:var(--ink);animation:flip .4s ease both}
+.t::after{content:"";position:absolute;left:0;right:0;top:50%;height:1px;background:rgba(0,0,0,.55)}
+.t.sp{background:transparent;box-shadow:none;width:10px}
+.t.sp::after{display:none}
+@keyframes flip{0%{transform:rotateX(90deg)}60%{transform:rotateX(-12deg)}100%{transform:none}}
+.sub{font-family:var(--f-flap);font-weight:600;font-size:13px;letter-spacing:.26em;text-transform:uppercase;color:var(--muted);text-align:center}
+.sub em{font-style:normal;color:var(--amber)}
+
+/* controls */
+.controls{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.seg{display:flex;gap:4px;padding:4px;background:var(--housing);border:1px solid var(--edge);border-radius:10px;overflow-x:auto;scrollbar-width:none;flex:1 1 auto;min-width:0}
+.seg button{flex:0 0 auto;background:transparent;border:0;border-radius:7px;padding:8px 12px;cursor:pointer;
+  font-family:var(--f-flap);font-weight:600;font-size:14px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);white-space:nowrap}
+.seg button:hover{color:var(--ink)}
+.seg button[aria-pressed=true]{background:var(--flap);color:var(--ink)}
+.seg button.fav[aria-pressed=true]{color:var(--amber)}
+.search{flex:1 1 200px;display:flex;align-items:center;gap:8px;background:var(--housing);border:1px solid var(--edge);border-radius:10px;padding:0 12px}
+.search svg{width:16px;height:16px;color:var(--muted);flex:0 0 auto}
+.search input{flex:1;min-width:0;background:transparent;border:0;outline:0;padding:11px 0;font-size:16px}
+.mode{background:var(--flap-lo);border:1px solid #2f3034;border-radius:6px;padding:9px 14px;cursor:pointer;
+  font-family:var(--f-flap);font-weight:600;font-size:14px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink)}
+.mode.primary{background:var(--amber);border-color:var(--amber);color:#141517}
+
+.groups{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;margin-top:-6px}
+.groups button{flex:0 0 auto;background:var(--flap-lo);border:1px solid #2f3034;border-radius:6px;padding:6px 10px;cursor:pointer;
+  font-family:var(--f-flap);font-weight:600;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.groups button[aria-pressed=true]{color:#141517;background:var(--amber);border-color:var(--amber)}
+
+/* channel grid */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+.ch{position:relative;display:flex;align-items:center;gap:10px;padding:10px;background:var(--flap-lo);border:1px solid #2f3034;border-radius:10px;cursor:pointer;text-align:left;min-width:0}
+.ch:hover{border-color:#44454a}
+.ch[aria-current=true]{border-color:var(--amber);box-shadow:0 0 0 1px var(--amber) inset}
+.ch.dead{opacity:.4}
+.logo{flex:0 0 40px;height:40px;border-radius:8px;background:#121315;display:grid;place-items:center;overflow:hidden;
+  font-family:var(--f-flap);font-weight:700;font-size:15px;color:var(--muted)}
+.logo img{max-width:34px;max-height:34px;object-fit:contain}
+.nm{min-width:0;flex:1}
+.nm b{display:block;font-weight:600;font-size:14px;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.nm span{display:block;font-family:var(--f-flap);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.star{position:absolute;top:4px;right:6px;background:none;border:0;padding:4px;cursor:pointer;color:#4a4b50;font-size:15px;line-height:1}
+.star[aria-pressed=true]{color:var(--amber)}
+.note{text-align:center;color:var(--muted);padding:24px 8px}
+.more{display:flex;justify-content:center}
+
+.maker{display:flex;flex-direction:column;align-items:center;gap:6px;padding-top:6px}
+.maker-mark{filter:drop-shadow(0 -1px 0 rgba(0,0,0,.85)) drop-shadow(0 1.5px 0 rgba(255,255,255,.16)) drop-shadow(0 0 1px rgba(0,0,0,.5))}
+.maker-logo{display:block;width:38px;height:42px;background:linear-gradient(180deg,#4a4b50,#3a3b40);-webkit-mask:url(icons/organik-mark.png) center/contain no-repeat;mask:url(icons/organik-mark.png) center/contain no-repeat}
+.maker-text{font-family:var(--f-flap);font-weight:700;font-size:12px;letter-spacing:.32em;text-transform:uppercase;color:#4c4d52;text-shadow:0 -1px 0 rgba(0,0,0,.85),0 1.5px 0 rgba(255,255,255,.14)}
+@media (max-width:520px){.t{width:20px;height:32px;font-size:21px}.grid{grid-template-columns:1fr 1fr}}
+@media (prefers-reduced-motion:reduce){.t{animation:none}}
+</style>
+</head>
+<body>
+<main class="device">
+  <div class="screen" id="screen">
+    <video id="video" playsinline controls hidden></video>
+    <span class="live" id="live" hidden>LIVE</span>
+    <div class="static" id="static"><div><b id="stTitle">Telly</b><span id="stText">Pick a channel below.</span><br><button class="mode" id="stBtn" hidden>Try the next one</button></div></div>
+  </div>
+
+  <div class="board">
+    <div class="flaps" id="flaps" aria-live="polite"></div>
+    <div class="sub" id="sub">Free-to-air TV · <em id="count">…</em> channels</div>
+  </div>
+
+  <div class="controls">
+    <div class="seg" id="countries" role="group" aria-label="Country"></div>
+    <div class="search">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+      <input id="q" type="search" placeholder="Search channels" aria-label="Search channels" autocomplete="off">
+    </div>
+  </div>
+  <div class="groups" id="groups"></div>
+
+  <div class="grid" id="grid"></div>
+  <div class="more"><button class="mode" id="moreBtn" hidden>Show more</button></div>
+
+  <footer class="maker">
+    <span class="maker-mark" aria-hidden="true"><span class="maker-logo"></span></span>
+    <span class="maker-text">An Organik Labs creation</span>
+  </footer>
+</main>
+
+<script>
+/* ---------- sources: the open iptv-org lists (publicly available free-to-air streams) ---------- */
+const COUNTRIES=[['uk','UK'],['pt','Portugal'],['us','USA'],['es','Spain'],['fr','France'],['ie','Ireland']];
+const FAV='★ Favourites';
+const listURL=c=>`https://iptv-org.github.io/iptv/countries/${c}.m3u`;
+const $=s=>document.querySelector(s);
+const esc=s=>String(s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const ls=(k,d)=>{try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch{return d}};
+const lsSet=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch{}};
+
+let country=ls('telly-country','uk'), group='All', query='', channels=[], shown=[], limit=60, current=null;
+let favs=ls('telly-favs',{}); // url -> {name,logo,group,url,cc}
+const dead=new Set(ls('telly-dead',[]));
+const cache={};
+
+function parseM3U(text,cc){
+  const out=[];let meta=null,needsHeaders=false;
+  for(const raw of text.split(/\r?\n/)){const line=raw.trim();if(!line)continue;
+    if(line.startsWith('#EXTINF')){
+      const a=k=>{const m=line.match(new RegExp(k+'="([^"]*)"'));return m?m[1]:''};
+      const name=line.slice(line.lastIndexOf(',')+1).trim();
+      meta={name:name.replace(/\s*\((\d+p|Geo-blocked|Not 24\/7)\)/gi,'').trim(),raw:name,logo:a('tvg-logo'),group:(a('group-title')||'General').split(';')[0]||'General',cc};
+      needsHeaders=false;
+    }else if(line.startsWith('#EXTVLCOPT')||line.startsWith('#KODIPROP')){needsHeaders=true;}
+    else if(!line.startsWith('#')&&meta){
+      // browsers block plain-http video on a secure page, and can't send the custom headers some streams need
+      if(line.startsWith('https://')&&!needsHeaders)out.push({...meta,url:line,geo:/geo-blocked/i.test(meta.raw)});
+      meta=null;
+    }
+  }
+  return out;
+}
+async function load(cc){
+  if(cc===FAV){channels=Object.values(favs);return}
+  if(!cache[cc]){const r=await fetch(listURL(cc));if(!r.ok)throw new Error(r.status);cache[cc]=parseM3U(await r.text(),cc);}
+  channels=cache[cc];
+}
+
+/* ---------- board ---------- */
+function flaps(text){
+  const t=text.toUpperCase().replace(/[^A-Z0-9 &+!\-]/g,'').slice(0,18).trim()||'TELLY';
+  $('#flaps').innerHTML=[...t].map((c,i)=>c===' '?'<span class="t sp"></span>':`<span class="t" style="animation-delay:${i*35}ms">${c}</span>`).join('');
+}
+
+/* ---------- lists ---------- */
+function drawCountries(){
+  $('#countries').innerHTML=[[FAV,'★ Saved'],...COUNTRIES].map(([c,n])=>`<button class="${c===FAV?'fav':''}" data-c="${c}" aria-pressed="${c===country}">${n}</button>`).join('');
+}
+function drawGroups(){
+  const gs=['All',...[...new Set(channels.map(c=>c.group))].sort()];
+  if(!gs.includes(group))group='All';
+  $('#groups').innerHTML=gs.length>2?gs.map(g=>`<button data-g="${esc(g)}" aria-pressed="${g===group}">${esc(g)}</button>`).join(''):'';
+}
+function drawGrid(){
+  const q=query.toLowerCase();
+  shown=channels.filter(c=>(group==='All'||c.group===group)&&(!q||c.name.toLowerCase().includes(q)))
+    .sort((a,b)=>(dead.has(a.url)-dead.has(b.url))||a.name.localeCompare(b.name));
+  $('#count').textContent=shown.length;
+  if(!shown.length){$('#grid').innerHTML=`<div class="note" style="grid-column:1/-1">${country===FAV?'Tap the ☆ on any channel to save it here.':'No channels match.'}</div>`;$('#moreBtn').hidden=true;return;}
+  $('#grid').innerHTML=shown.slice(0,limit).map((c,i)=>`<div class="ch${dead.has(c.url)?' dead':''}" role="button" tabindex="0" data-i="${i}" aria-current="${current&&current.url===c.url}">
+    <span class="logo">${c.logo?`<img src="${esc(c.logo)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.replaceWith(document.createTextNode('${esc(c.name.slice(0,2)).toUpperCase()}'))">`:esc(c.name.slice(0,2)).toUpperCase()}</span>
+    <span class="nm"><b>${esc(c.name)}</b><span>${esc(c.group)}${c.geo?' · geo':''}</span></span>
+    <button class="star" data-s="${i}" aria-label="Save ${esc(c.name)}" aria-pressed="${!!favs[c.url]}">${favs[c.url]?'★':'☆'}</button></div>`).join('');
+  $('#moreBtn').hidden=shown.length<=limit;
+}
+async function selectCountry(cc){
+  country=cc;lsSet('telly-country',cc);group='All';limit=60;drawCountries();
+  $('#grid').innerHTML='<div class="note" style="grid-column:1/-1">Tuning in…</div>';
+  try{await load(cc);drawGroups();drawGrid();}
+  catch{$('#grid').innerHTML='<div class="note" style="grid-column:1/-1">Couldn’t load the channel list. Check your connection and try again.</div>';}
+}
+
+/* ---------- player ---------- */
+const video=$('#video');let hls=null,hlsLib=null,gen=0,watchdog;
+function loadHls(){return hlsLib||(hlsLib=new Promise((res,rej)=>{const s=document.createElement('script');
+  s.src='https://cdn.jsdelivr.net/npm/hls.js@1/dist/hls.min.js';s.onload=()=>res(window.Hls);s.onerror=rej;document.head.appendChild(s);}));}
+function showStatic(title,text,retry){
+  video.hidden=true;$('#live').hidden=true;$('#static').hidden=false;$('#stTitle').textContent=title;$('#stText').textContent=text;$('#stBtn').hidden=!retry;
+}
+function stop(){gen++;clearTimeout(watchdog);if(hls){hls.destroy();hls=null}video.removeAttribute('src');video.load();}
+function fail(c,g){
+  if(g!==gen)return;stop();dead.add(c.url);lsSet('telly-dead',[...dead].slice(-400));
+  showStatic('Off air',`${c.name} isn’t broadcasting to this device right now${c.geo?' (it may only play in its home country)':''}.`,true);drawGrid();
+}
+async function play(c){
+  stop();const g=gen;current=c;flaps(c.name);drawGrid();
+  showStatic('Tuning…',c.name,false);
+  watchdog=setTimeout(()=>fail(c,g),15000);
+  const ok=()=>{if(g!==gen)return;clearTimeout(watchdog);dead.delete(c.url);lsSet('telly-dead',[...dead]);
+    $('#static').hidden=true;video.hidden=false;$('#live').hidden=false;drawGrid();};
+  video.onplaying=ok;video.onerror=()=>fail(c,g);
+  try{
+    if(video.canPlayType('application/vnd.apple.mpegurl')&&!/\.(mpd)(\?|$)/.test(c.url)){video.src=c.url;}
+    else{const Hls=await loadHls();if(g!==gen)return;
+      if(!Hls.isSupported()){video.src=c.url;}
+      else{hls=new Hls({maxBufferLength:20});hls.on(Hls.Events.ERROR,(_,d)=>{if(d.fatal)fail(c,g)});hls.loadSource(c.url);hls.attachMedia(video);}
+    }
+    await video.play().catch(()=>{video.muted=true;return video.play()});
+  }catch{fail(c,g)}
+}
+function next(){if(!current)return;const i=shown.findIndex(c=>c.url===current.url);
+  const rest=shown.slice(i+1).concat(shown.slice(0,i)).filter(c=>!dead.has(c.url));if(rest[0])play(rest[0]);}
+
+/* ---------- events ---------- */
+$('#countries').onclick=e=>{const b=e.target.closest('[data-c]');if(b&&b.dataset.c!==country)selectCountry(b.dataset.c);};
+$('#groups').onclick=e=>{const b=e.target.closest('[data-g]');if(!b)return;group=b.dataset.g;limit=60;drawGroups();drawGrid();};
+$('#q').oninput=e=>{query=e.target.value;limit=60;drawGrid();};
+$('#moreBtn').onclick=()=>{limit+=60;drawGrid();};
+$('#stBtn').onclick=next;
+$('#grid').onclick=e=>{
+  const s=e.target.closest('[data-s]');
+  if(s){e.stopPropagation();const c=shown[+s.dataset.s];if(favs[c.url])delete favs[c.url];else favs[c.url]=c;lsSet('telly-favs',favs);
+    if(country===FAV)channels=Object.values(favs);drawGrid();return;}
+  const ch=e.target.closest('[data-i]');if(ch){play(shown[+ch.dataset.i]);if(innerWidth<700)$('#screen').scrollIntoView({behavior:'smooth',block:'start'});}
+};
+$('#grid').onkeydown=e=>{if((e.key==='Enter'||e.key===' ')&&e.target.matches('[data-i]')){e.preventDefault();play(shown[+e.target.dataset.i]);}};
+
+flaps('Telly');
+selectCountry(country===FAV||COUNTRIES.some(([c])=>c===country)?country:'uk');
+if('serviceWorker' in navigator)addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
+</script>
+</body>
+</html>

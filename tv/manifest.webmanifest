@@ -1,0 +1,16 @@
+{
+  "name": "Telly",
+  "short_name": "Telly",
+  "description": "Free-to-air TV channels from around the world, on a split-flap set.",
+  "id": "/tv/",
+  "start_url": "/tv/",
+  "scope": "/tv/",
+  "display": "standalone",
+  "background_color": "#141517",
+  "theme_color": "#141517",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
