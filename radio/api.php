@@ -53,6 +53,7 @@ try {
     case 'countries': out(countries(), 86400); break;
     case 'icy':       out(icy_now($_GET['id'] ?? ''), 15); break;
     case 'click':     out(click($_GET['id'] ?? ''), 0); break;
+    case 'diag':      out(diag(), 0); break;
     default:          http_response_code(400); out(['error' => 'unknown action'], 0);
   }
 } catch (Throwable $e) {
@@ -164,6 +165,19 @@ function icy_now($id) {
 
 // ==========================================================================
 // Helpers
+
+function diag() {   // TEMPORARY: see what Radio France answers from this server
+  $out = [];
+  foreach (['https://www.radiofrance.fr/fip/api/live?webradio=fip_jazz', 'https://www.radiofrance.fr/fip/api/live?webradio=fip',
+            'https://api.radiofrance.fr/livemeta/live/65/fip_extended', 'https://api.radiofrance.fr/livemeta/pull/65'] as $u) {
+    $h = curl_init($u);
+    curl_setopt_array($h, [CURLOPT_RETURNTRANSFER => true, CURLOPT_FOLLOWLOCATION => true, CURLOPT_TIMEOUT => 8, CURLOPT_ENCODING => '', CURLOPT_USERAGENT => UA, CURLOPT_HTTPHEADER => ['Accept: application/json']]);
+    $b = curl_exec($h);
+    $out[] = ['url' => $u, 'code' => curl_getinfo($h, CURLINFO_RESPONSE_CODE), 'err' => curl_error($h), 'type' => curl_getinfo($h, CURLINFO_CONTENT_TYPE), 'body' => substr((string)$b, 0, 1500)];
+    curl_close($h);
+  }
+  return $out;
+}
 
 function out($data, $maxAge) {
   header('Cache-Control: ' . ($maxAge > 0 ? "public, max-age=$maxAge" : 'no-store'));
