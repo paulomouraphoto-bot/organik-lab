@@ -7,7 +7,7 @@ jobs:
     steps:
       - name: Query each group
         run: |
-          for g in ${GROUPS:-green good wonders}; do
+          for g in green good wonders; do
             body=$(curl -s -m 40 "https://lab.organikreations.com/news/api.php?groups=$g")
             out=$(echo "$body" | jq -c '{groups, failed, items: (.items|length), images: ([.items[]|select(.image!=null)]|length), first: (.items[0].source)}' 2>/dev/null || echo "${body:0:150}")
             echo "::notice title=$g::$out"
