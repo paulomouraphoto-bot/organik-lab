@@ -161,6 +161,26 @@ const ALIEN_TOP = [
 ];
 const ALIEN_A = ALIEN_TOP.concat(['..KGKGGKKGGKGK..','..KK.KK..KK.KK..']);
 const ALIEN_B = ALIEN_TOP.concat(['..KGKGGKKGGKGK..','.KK..KK..KK..KK.']);
+const MUM = [
+'........................','........KKKKKKKK........','......KKDDDDDDDDKK......','.....KDDDdDDDDdDDDK.....',
+'....KDDDDDDDDDDDDDDK....','....KDDDSSSSSSSSDDDK....','....KDDSSSSSSSSSSDDK....','....KDDSKKSSSSKKSDDK....',
+'....KDDSEWSSSSEWSDDK....','....KDDSEESSSSEESDDK....','....KDDSpSSSSSSpSDDK....','....KDDSSSKMMKSSSDDK....',
+'....KDDDSSSSSSSSDDDK....','...KDDDDKSSSSSSKDDDDK...','...KDDDDDKKSSKKDDDDDK...','...KDDDKXXXXXXXXKDDDK...',
+'...KDDKXXXXXXXXXXKDDK...','...KDKXXXXXXXXXXXXKDK...','....KXXKJJJJJJJJKXXK....','....KXXKJjJJJJjJKXXK....',
+'....KSSKJJJJJJJJKSSK....','......KKJJJjJJJJKK......','......KXJJJJJJJJXK......','......KXJjJJJJjJXK......',
+'......KXKJJJJJJKXK......','......KXXKKKKKKXXK......','.......KLLLLLLLLK.......','.......KLLLKKLLLK.......',
+'.......KSSK..KSSK.......','.......KSSK..KSSK.......','......KWWWK..KWWWK......','......KKKKK..KKKKK......'
+];
+const DAD = [
+'........................','........KKKKKKKK........','.......KNNNNNNNNK.......','......KNNNnNNNNNNK......',
+'.....KNNSSSSSSSSNNK.....','.....KNSSSSSSSSSSNK.....','.....KSKKKSSSSKKKSK.....','.....KSSEWSSSSEWSSK.....',
+'....KSSSEESSSSEESSSK....','.....KSSSSSssSSSSSK.....','.....KFFSSSSSSSSFFK.....','.....KFFFKMMMMKFFFK.....',
+'.....KFFFFKMMKFFFFK.....','......KFFFFFFFFFFK......','.......KKKSSSSKKK.......','....KKAAAAAAAAAAAAKK....',
+'...KAAAAAAAAAAAAAAAAK...','..KAAKAAAAAAAAAAAAKAAK..','..KAAKAAAAAAAAAAAAKAAK..','..KSS' + 'K'.repeat(14) + 'SSK..',
+'....KUUcUUrUUyUUgUUK....','....KUUUUUUUUUUUUUUK....','....KUuUuUuUuUuUuUUK....','....KUUUUUUUUUUUUUUK....',
+'.....' + 'K'.repeat(14) + '.....','.......KZZZZZZZZK.......','.......KZZZKKZZZK.......','.......KZZK..KZZK.......',
+'.......KZZK..KZZK.......','.......KZZK..KZZK.......','......KWWWK..KWWWK......','......KKKKK..KKKKK......'
+];
 const STAR = ['....K....','...KYK...','KKKYYYKKK','KYYYYYYYK','.KYYYYYK.','..KYYYK..','.KYYKYYK.','.KYK.KYK.','.KK...KK.'];
 
 function sprite(rows, pal) {
@@ -176,7 +196,15 @@ const SPR = {
   elliot: sprite(ELLIOT, PAL), liam: sprite(LIAM, PAL),
   aG: [sprite(ALIEN_A, green), sprite(ALIEN_B, green)],
   aP: [sprite(ALIEN_A, purple), sprite(ALIEN_B, purple)],
-  star: sprite(STAR, { K:'#1b1622', Y:'#ffd23f' })
+  star: sprite(STAR, { K:'#1b1622', Y:'#ffd23f' }),
+  mum: sprite(MUM, Object.assign({}, PAL, { D:'#3a2418', d:'#5a3a28', X:'#9b6bd6', J:'#9fd3ff', j:'#ffd23f' })),
+  dad: sprite(DAD, Object.assign({}, PAL, { F:'#3a2a20', s:'#e0a07c', A:'#6b8f4e', U:'#a0703c', u:'#7a5228', c:'#1c9aa8', r:'#d8333b', y:'#ffd23f', g:'#7ed957', Z:'#3b4a6b' }))
+};
+const BOSSES = {
+  mum: { name: 'MUM', lines: ['BEDTIME, ELLIOT!', 'PYJAMAS ON!', 'BRUSH YOUR TEETH!', 'NO MORE GAMES!'], win: 'OK... 5 MORE MINUTES!', lose: 'BEDTIME!',
+    over: 'Mum caught you. Pyjamas on, it\'s bedtime!', bar: '#c9a6ff' },
+  dad: { name: 'DAD', lines: ['CLEAN YOUR ROOM!', 'PICK UP YOUR TOYS!', 'ELLIOOOT!', 'WHO MADE THIS MESS?'], win: 'FINE... TOMORROW!', lose: 'ROOM. NOW!',
+    over: 'Dad caught you. Time to tidy your room!', bar: '#a6e36b' }
 };
 function paintInto(id, img, sx, sy, sw, sh) {
   const c = document.getElementById(id), x = c.getContext('2d');
@@ -204,7 +232,8 @@ const sfx = {
   star() { [660, 880, 1320].forEach((f, i) => tone(f, f * 1.01, .08, 'square', .08, i * .07)); },
   giggle() { for (let i = 0; i < 10; i++) tone(i % 2 ? 980 : 720, i % 2 ? 860 : 640, .07, 'triangle', .16, i * .085); },
   stink() { tone(520, 300, .25, 'sawtooth', .09); tone(380, 150, .4, 'sawtooth', .09, .26); },
-  cheer() { [523, 659, 784, 1046].forEach((f, i) => tone(f, f, .1, 'square', .08, i * .08)); }
+  cheer() { [523, 659, 784, 1046].forEach((f, i) => tone(f, f, .1, 'square', .08, i * .08)); },
+  boss() { [220, 330, 220, 440].forEach((f, i) => tone(f, f * .98, .16, 'square', .1, i * .18)); }
 };
 
 /* ---------- dom ---------- */
@@ -241,7 +270,8 @@ const CHEERS = ['SUPER!', 'WOW!', 'YEAH ELLIOT!', 'SO CLEAN!', 'AMAZING!'];
 let G;
 function newGame() {
   G = { state: 'play', t: 0, score: 0, hearts: 5, charge: 0, aliens: [], bubbles: [], stars: [], parts: [], texts: [], rings: [],
-    spawnT: 1.6, starT: 5, nextLane: 1, lastLanes: [], ufo: { x: 90 }, elliot: { lane: 1, x: 90, throwT: 0, squash: 0 }, liam: null, shake: 0 };
+    spawnT: 1.6, starT: 5, nextLane: 1, lastLanes: [], ufo: { x: 90 }, elliot: { lane: 1, x: 90, throwT: 0, squash: 0 }, liam: null, shake: 0,
+    boss: null, bossT: 30 + Math.random() * 10, nextBoss: Math.random() < .5 ? 'mum' : 'dad', lastBoss: null, gid: 0 };
   drawHud();
 }
 function drawHud() {
@@ -271,6 +301,48 @@ function popAlien(a, viaLiam) {
 }
 function dropStar(x, y) { G.stars.push({ x, y, bx: x, t: 0 }); }
 
+/* ---------- bosses: Mum and Dad ---------- */
+function spawnBoss(d) {
+  const who = G.nextBoss; G.nextBoss = who === 'mum' ? 'dad' : 'mum';
+  const lane = Math.floor(Math.random() * 3);
+  G.boss = { who, lane, x: LANES[lane], y: -50, hp: 8, max: 8, v: 6 + 3 * d, moveT: 3, t: 0, hitT: 0, talkT: .6, li: 0, line: '', lineT: 0, leaving: false, dir: 1, lastGid: -1 };
+  say(90, 110, 'UH OH! ' + BOSSES[who].name + '!', '#ff9ecb'); sfx.boss();
+}
+function bossLeaves(B, line) {
+  B.leaving = true; B.line = line; B.lineT = 2.4; B.dir = B.x < 90 ? -1 : 1;
+}
+function hurtBoss(B, n) {
+  B.hp -= n; B.hitT = .18;
+  burst(B.x, B.y + 20, ['#ffffff', '#bfe9ff'], 8, 40);
+  if (B.hp <= 0) {
+    G.score += 5; say(B.x, B.y - 4, '+5', '#ffd23f'); sfx.cheer();
+    burst(B.x, B.y + 24, ['#ffffff', '#ffd23f', '#bfe9ff', '#ff9ecb'], 30, 70);
+    for (let i = 0; i < 3; i++) dropStar(30 + i * 60, B.y + 10);
+    bossLeaves(B, BOSSES[B.who].win); drawHud();
+  }
+}
+function updateBoss(dt, d) {
+  const B = G.boss, info = BOSSES[B.who];
+  B.t += dt; B.hitT = Math.max(0, B.hitT - dt); B.lineT -= dt;
+  if (B.leaving) {
+    B.y -= 45 * dt; B.x += B.dir * 45 * dt;
+    if (B.y < -70 || B.x < -40 || B.x > LW + 40) { G.boss = null; G.bossT = 45 + Math.random() * 20; G.spawnT = 1.5; }
+    return;
+  }
+  B.y += B.v * dt;
+  B.moveT -= dt;
+  if (B.moveT <= 0) { B.lane = (B.lane + 1 + Math.floor(Math.random() * 2)) % 3; B.moveT = 2.4 + Math.random() * 1.6; }
+  B.x += (LANES[B.lane] - B.x) * Math.min(1, dt * 2.5);
+  B.talkT -= dt;
+  if (B.talkT <= 0) { B.line = info.lines[B.li++ % info.lines.length]; B.lineT = 2.2; B.talkT = 3.2; }
+  if (B.y + 48 >= FENCE) {
+    G.hearts = Math.max(0, G.hearts - 2); G.shake = .5; G.lastBoss = B.who;
+    sfx.stink(); try { navigator.vibrate && navigator.vibrate(150); } catch (e) {}
+    bossLeaves(B, info.lose); drawHud();
+    if (G.hearts <= 0) { G.caughtBy = B.who; gameOver(); }
+  }
+}
+
 function update(dt) {
   G.t += dt;
   const d = Math.min(1, G.t / 160);
@@ -281,7 +353,9 @@ function update(dt) {
 
   // ufo glides to the next lane, then drops an alien
   G.ufo.x += (LANES[G.nextLane] - G.ufo.x) * Math.min(1, dt * 3);
-  G.spawnT -= dt;
+  if (G.boss) { updateBoss(dt, d); if (G.state !== 'play') return; }
+  else { G.bossT -= dt; if (G.bossT <= 0) spawnBoss(d); }
+  if (!G.boss) G.spawnT -= dt;
   if (G.spawnT <= 0) {
     const big = d > .35 && Math.random() < .22;
     G.aliens.push({ x: LANES[G.nextLane], y: 26, v: 13 + 22 * d + Math.random() * 4, hp: big ? 2 : 1, big, t: Math.random() * 2, hitT: 0 });
@@ -316,18 +390,22 @@ function update(dt) {
         if (a.hp <= 0) { popAlien(a); drawHud(); } else burst(a.x, a.y + 8, ['#ffffff', '#bfe9ff'], 6, 30);
       }
     }
+    const B = G.boss;
+    if (B && !B.leaving && !b.dead && Math.abs(B.x - b.x) < 16 && b.y < B.y + 48 && b.y > B.y) { b.dead = true; sfx.hit(); hurtBoss(B, 1); }
     if (b.y < -10) b.dead = true;
   }
   for (const s of G.stars) { s.t += dt; s.y += 20 * dt; s.x = s.bx + Math.sin(s.t * 2.2) * 8; if (s.y > LH + 10) s.dead = true; }
 
   if (G.liam) {
     const Lm = G.liam; Lm.t += dt; Lm.x += 110 * dt;
-    if (Lm.t > .15 && Lm.t < 1.6 && Math.floor(Lm.t * 6) !== Lm.lastRing) { Lm.lastRing = Math.floor(Lm.t * 6); G.rings.push({ x: Lm.x, y: 286, r: 4 }); }
+    if (Lm.t > .15 && Lm.t < 1.6 && Math.floor(Lm.t * 6) !== Lm.lastRing) { Lm.lastRing = Math.floor(Lm.t * 6); G.rings.push({ x: Lm.x, y: 286, r: 4, gid: G.gid }); }
     if (Lm.x > LW + 30) { G.liam = null; drawHud(); }
   }
   for (const r of G.rings) {
     r.r += 230 * dt;
     for (const a of G.aliens) if (!a.dead && Math.hypot(a.x - r.x, a.y + 8 - r.y) < r.r) popAlien(a, true);
+    const B = G.boss;
+    if (B && !B.leaving && B.lastGid !== r.gid && Math.hypot(B.x - r.x, B.y + 24 - r.y) < r.r) { B.lastGid = r.gid; hurtBoss(B, 4); }
     if (r.r > 420) r.dead = true;
   }
   if (G.rings.length) drawHud();
@@ -379,6 +457,29 @@ function render(now) {
     if (a.hitT > 0) ctx.globalAlpha = .5;
     ctx.drawImage(set[fr], x, y, w, w);
     ctx.globalAlpha = 1;
+  }
+
+  // boss
+  if (G.boss) {
+    const B = G.boss, info = BOSSES[B.who], step = Math.floor(B.t * 4) % 2;
+    if (B.hitT > 0) ctx.globalAlpha = .5;
+    ctx.drawImage(SPR[B.who], px(B.x - 18), px(B.y + step), 36, 48);
+    ctx.globalAlpha = 1;
+    if (B.lineT > 0 && B.line) {
+      ctx.font = '6px "Press Start 2P", monospace'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      const w = ctx.measureText(B.line).width + 8, bx = Math.min(LW - w / 2 - 2, Math.max(w / 2 + 2, B.x)), by = B.y < 62 ? B.y + 58 : B.y - 8;
+      ctx.fillStyle = '#000'; ctx.fillRect(px(bx - w / 2) - 1, by - 7, px(w) + 2, 14);
+      ctx.fillStyle = '#ffffff'; ctx.fillRect(px(bx - w / 2), by - 6, px(w), 12);
+      if (B.y < 62) { ctx.fillRect(px(B.x) - 2, by - 8, 4, 2); ctx.fillRect(px(B.x) - 1, by - 10, 2, 2); }
+      else { ctx.fillRect(px(B.x) - 2, by + 6, 4, 2); ctx.fillRect(px(B.x) - 1, by + 8, 2, 2); }
+      ctx.fillStyle = '#1b1622'; ctx.fillText(B.line, bx, by + 1);
+    }
+    if (!B.leaving) {
+      text(info.name, 22, 44, info.bar, 6);
+      ctx.fillStyle = '#000'; ctx.fillRect(39, 41, 122, 7);
+      ctx.fillStyle = '#3b3f73'; ctx.fillRect(40, 42, 120, 5);
+      ctx.fillStyle = info.bar; ctx.fillRect(40, 42, Math.max(0, 120 * B.hp / B.max), 5);
+    }
   }
 
   // fence
@@ -452,7 +553,7 @@ cv.addEventListener('pointerdown', e => {
 liamBtn.addEventListener('click', () => {
   if (!G || G.state !== 'play' || G.charge < 5 || G.liam) return;
   ensureAudio();
-  G.charge = 0; G.liam = { x: -14, t: 0, lastRing: -1 };
+  G.charge = 0; G.gid = (G.gid || 0) + 1; G.liam = { x: -14, t: 0, lastRing: -1 };
   say(90, 120, 'GIGGLE SHOCKWAVE!', '#ffd23f'); sfx.giggle(); drawHud();
 });
 
@@ -465,7 +566,8 @@ function gameOver() {
   G.state = 'over';
   const best = getBest(); if (G.score > best) setBest(G.score); showBest();
   $('overScore').textContent = G.score === 1 ? '1 alien cleaned' : G.score + ' aliens cleaned';
-  $('overMsg').textContent = G.score > best && best > 0 ? 'New record! The garden still got a bit stinky though.' : 'The stinky aliens got into the garden!';
+  $('overMsg').textContent = G.caughtBy ? BOSSES[G.caughtBy].over
+    : G.score > best && best > 0 ? 'New record! The garden still got a bit stinky though.' : 'The stinky aliens got into the garden!';
   setTimeout(() => { $('overScreen').hidden = false; $('againBtn').focus(); }, 700);
 }
 $('playBtn').addEventListener('click', start);
