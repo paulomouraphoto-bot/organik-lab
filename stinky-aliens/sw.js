@@ -1,6 +1,6 @@
 // Offline support for Elliot vs the Stinky Aliens.
 // The page itself is fetched network-first so new versions arrive; everything else is cache-first.
-const CACHE = 'stinky-aliens-v1';
+const CACHE = 'stinky-aliens-v2';
 const CORE = ['./', './manifest.webmanifest', './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png'];
 
 self.addEventListener('install', e => {
