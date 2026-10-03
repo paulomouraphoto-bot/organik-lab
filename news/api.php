@@ -250,14 +250,14 @@ function parse_feed($xmlString) {
 
     $html = (string)($e->description ?? '');
     if ($html === '' && isset($e->summary)) $html = (string)$e->summary;
-    $full = $content && isset($content->encoded) ? (string)$content->encoded : (isset($e->content) ? (string)$e->content : '');
+    $full = $content !== null && isset($content->encoded) ? (string)$content->encoded : (isset($e->content) ? (string)$e->content : '');
     $summary = clean_text($html !== '' ? $html : $full);
     if (mb_strlen($summary) < 80 && $full !== '') $summary = clean_text($full);
     $summary = preg_replace('/\s*(The post .* appeared first on .*|Continue reading\.*|Read more\.*|\[…\]|\[\.\.\.\])\s*$/u', '', $summary);
     if (mb_strlen($summary) > SUMMARY_LEN) $summary = rtrim(mb_substr($summary, 0, SUMMARY_LEN), " ,.;:-") . '…';
     if (strcasecmp($summary, $title) === 0) $summary = '';
 
-    $date = (string)($e->pubDate ?? '') ?: (string)($e->published ?? '') ?: (string)($e->updated ?? '') ?: ($dc ? (string)$dc->date : '');
+    $date = (string)($e->pubDate ?? '') ?: (string)($e->published ?? '') ?: (string)($e->updated ?? '') ?: ($dc !== null ? (string)$dc->date : '');
     $ts = $date ? strtotime($date) : false;
     if (!$ts || $ts > time() + 3600) $ts = time() - 86400;
 
@@ -283,10 +283,11 @@ function pick_image($e, $media, $html) {
     $w = (int)$w ?: 300;
     if ($w > $bestW) { $best = $url; $bestW = $w; }
   };
-  if ($media) {
-    foreach ($media->content as $m) { $t = (string)$m['type']; $med = (string)$m['medium']; if ($t === '' || str_starts_with($t, 'image') || $med === 'image') $consider($m['url'], $m['width']); }
-    foreach ($media->thumbnail as $m) $consider($m['url'], $m['width'] ?: 200);
-    if (isset($media->group)) foreach ($media->group->content as $m) $consider($m['url'], $m['width']);
+  if ($media !== null) {
+    // media:* elements keep their (un-prefixed) attributes outside the media namespace, so read them via attributes()
+    foreach ($media->content as $m) { $a = $m->attributes(); $t = (string)$a['type']; $med = (string)$a['medium']; if ($t === '' || str_starts_with($t, 'image') || $med === 'image') $consider($a['url'], (string)$a['width']); }
+    foreach ($media->thumbnail as $m) { $a = $m->attributes(); $consider($a['url'], (string)$a['width'] ?: 200); }
+    if (isset($media->group)) foreach ($media->group->content as $m) { $a = $m->attributes(); $consider($a['url'], (string)$a['width']); }
   }
   foreach ($e->enclosure as $enc) if (str_starts_with((string)$enc['type'], 'image')) $consider($enc['url'], 600);
   if (!$best && preg_match('/<img[^>]+src=["\']([^"\']+)["\']/i', $html, $m)) $consider(html_entity_decode($m[1]), 400);
