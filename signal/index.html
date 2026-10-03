@@ -1,0 +1,541 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Signal">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<script>if ('serviceWorker' in navigator) addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));</script>
+<title>Signal Mapper</title>
+<meta name="theme-color" content="#141517">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&display=swap">
+<style>
+/* Layout: the lab's instrument panel — split-flap score board, a radar of past readings, then controls and the log. */
+:root{
+  color-scheme: dark;
+  --housing:#141517;
+  --panel:#1c1d20;
+  --panel-edge:#2a2b2f;
+  --flap:#2b2c30;
+  --flap-lo:#232427;
+  --ink:#f1ebdd;
+  --muted:#8c8a84;
+  --amber:#f4b63f;
+  --teal:#62c7a8;
+  --red:#ef6f5e;
+  --violet:#a98cf5;
+  --accent:var(--amber);
+  --f-flap:"Barlow Condensed","Arial Narrow","Helvetica Neue",Arial,sans-serif;
+  --f-ui:"Barlow","Helvetica Neue",Arial,sans-serif;
+}
+html{height:100%}
+body{
+  margin:0;background:var(--housing);color:var(--ink);
+  font-family:var(--f-ui);font-size:15px;
+  -webkit-font-smoothing:antialiased;
+  display:flex;min-height:100%;
+  padding:max(16px,env(safe-area-inset-top)) 16px max(16px,env(safe-area-inset-bottom));box-sizing:border-box;
+}
+body[data-q="good"]{--accent:var(--teal)}
+body[data-q="poor"]{--accent:var(--red)}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+button,input{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+
+.device{
+  width:100%;margin:auto;max-width:720px;
+  background:linear-gradient(180deg,#202124,var(--panel));
+  border:1px solid var(--panel-edge);border-radius:22px;
+  padding:clamp(18px,4vw,34px);
+  box-shadow:0 30px 60px -20px rgba(0,0,0,.7), inset 0 1px 0 rgba(255,255,255,.05);
+  display:flex;flex-direction:column;gap:clamp(18px,3.5vw,26px);
+}
+
+/* board */
+.board{display:flex;flex-direction:column;align-items:center;gap:10px}
+.word{--h:clamp(24px,6vw,42px);display:flex;gap:clamp(2px,.5vw,4px);max-width:100%}
+.word .flap{border-radius:4px;box-shadow:0 3px 6px rgba(0,0,0,.4)}
+.word .top,.word .leaf-top{border-radius:4px 4px 0 0}
+.word .bottom,.word .leaf-bottom{border-radius:0 0 4px 4px}
+.word .flap::before{display:none}
+.word .flap::after{height:1px;margin-top:0}
+.flaps{--h:clamp(88px,24vw,150px);display:flex;align-items:center;justify-content:center;gap:clamp(4px,1.2vw,10px)}
+.flap{
+  position:relative;width:calc(var(--h)*.66);height:var(--h);perspective:calc(var(--h)*4);
+  font-family:var(--f-flap);font-weight:600;font-size:calc(var(--h)*.86);
+  color:var(--ink);font-variant-numeric:tabular-nums;border-radius:8px;box-shadow:0 6px 14px rgba(0,0,0,.45);
+}
+.half{position:absolute;left:0;right:0;height:50%;overflow:hidden;backface-visibility:hidden;-webkit-backface-visibility:hidden}
+.half span{display:block;height:var(--h);line-height:var(--h);text-align:center}
+.top,.leaf-top{top:0;border-radius:8px 8px 0 0;transform-origin:50% 100%;background:linear-gradient(180deg,#323337,var(--flap))}
+.bottom,.leaf-bottom{bottom:0;border-radius:0 0 8px 8px;transform-origin:50% 0;background:linear-gradient(180deg,var(--flap-lo),#1e1f22)}
+.bottom span,.leaf-bottom span{transform:translateY(-50%)}
+.leaf-bottom{transform:rotateX(90deg)}
+.flap::after{content:"";position:absolute;left:0;right:0;top:50%;height:2px;margin-top:-1px;background:#0d0e0f;z-index:5}
+.flap::before{content:"";position:absolute;left:-3px;right:-3px;top:50%;height:8px;margin-top:-4px;z-index:6;
+  background:linear-gradient(90deg,#3b3c40 0 5px,transparent 5px calc(100% - 5px),#3b3c40 calc(100% - 5px));border-radius:2px}
+.flap.flipping .leaf-top{animation:fall-top .14s ease-in forwards}
+.flap.flipping .leaf-bottom{animation:fall-bottom .14s ease-out .14s forwards}
+@keyframes fall-top{from{transform:rotateX(0)}to{transform:rotateX(-90deg);filter:brightness(.6)}}
+@keyframes fall-bottom{from{transform:rotateX(90deg);filter:brightness(1.5)}to{transform:rotateX(0)}}
+.flaps .flap span{transition:color .3s}
+.flaps .flap.lit span{color:var(--accent)}
+.units{display:flex;gap:22px;justify-content:center;flex-wrap:wrap;
+  font-family:var(--f-flap);font-size:13px;letter-spacing:.24em;color:var(--muted);text-transform:uppercase}
+.units b{color:var(--ink);font-weight:600;font-variant-numeric:tabular-nums;letter-spacing:.08em}
+
+/* radar + controls */
+.controls{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:clamp(16px,4vw,32px);align-items:center}
+.radar-wrap{position:relative;width:100%;max-width:360px;aspect-ratio:1;justify-self:center}
+.radar{width:100%;height:100%;display:block;border-radius:50%;
+  background:radial-gradient(circle at 50% 50%,#1d1f21 0,#17181a 70%,#121314 100%);
+  box-shadow:inset 0 0 0 1px #2c2d31,inset 0 0 40px rgba(0,0,0,.6),0 10px 24px -10px rgba(0,0,0,.7)}
+.scale{position:absolute;right:4px;bottom:2px;font-family:var(--f-flap);font-size:13px;letter-spacing:.14em;color:var(--muted);text-transform:uppercase}
+.best{font-family:var(--f-flap);font-size:15px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);text-align:center;margin-top:8px;min-height:1.4em}
+.best b{color:var(--teal);font-weight:600}
+
+.side{display:flex;flex-direction:column;gap:12px;min-width:0}
+.btn{border:1px solid #34353a;background:#25262a;border-radius:12px;padding:13px 14px;cursor:pointer;
+  font-family:var(--f-flap);font-weight:600;font-size:17px;letter-spacing:.14em;text-transform:uppercase;
+  transition:transform .08s,background .2s,border-color .2s}
+.btn:hover{background:#2c2d31}
+.btn:active{transform:translateY(1px)}
+.btn:disabled{opacity:.6;cursor:progress}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#141517;font-size:21px;padding:17px;transition:background .3s,border-color .3s}
+.btn.primary:hover{filter:brightness(1.06)}
+.row{display:flex;gap:10px}
+.row .btn{flex:1}
+.btn[aria-pressed="false"]{color:var(--muted)}
+.btn[aria-pressed="true"]:not(.primary){border-color:var(--accent);color:var(--ink)}
+.field{display:flex;flex-direction:column;gap:6px}
+.field label{font-family:var(--f-flap);font-size:13px;letter-spacing:.2em;text-transform:uppercase;color:var(--muted)}
+.field input{background:var(--flap-lo);border:1px solid #34353a;border-radius:10px;padding:11px 12px;font-size:16px;width:100%}
+.field input::placeholder{color:#66655f}
+.note{font-size:13px;color:var(--muted);line-height:1.5;margin:0}
+
+/* log */
+.log{display:flex;flex-direction:column;gap:6px}
+.log-head{display:flex;justify-content:space-between;align-items:center;gap:12px;border-top:1px solid var(--panel-edge);padding-top:14px;
+  font-family:var(--f-flap);letter-spacing:.14em;text-transform:uppercase;font-size:15px;color:var(--muted)}
+.log-head b{color:var(--ink);font-weight:600}
+.linkbtn{background:none;border:0;padding:4px 0;cursor:pointer;color:var(--muted);font:inherit;letter-spacing:inherit;text-transform:inherit;text-decoration:underline;text-underline-offset:3px}
+.linkbtn:hover{color:var(--ink)}
+.entry{display:grid;grid-template-columns:44px minmax(0,1fr) auto;gap:12px;align-items:center;
+  background:var(--flap-lo);border-radius:12px;padding:10px 12px;border:1px solid transparent}
+.entry.top1{border-color:var(--teal)}
+.chip{width:44px;height:40px;border-radius:8px;display:grid;place-items:center;
+  font-family:var(--f-flap);font-weight:700;font-size:22px;color:#141517;font-variant-numeric:tabular-nums}
+.e-name{font-family:var(--f-flap);font-weight:600;font-size:17px;letter-spacing:.06em;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.e-meta{font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
+.e-del{background:none;border:0;color:var(--muted);cursor:pointer;width:32px;height:32px;border-radius:50%;font-size:20px;line-height:1}
+.e-del:hover{color:var(--ink);background:#2c2d31}
+.empty{color:var(--muted);font-size:14px;text-align:center;padding:10px 0}
+
+/* maker's mark */
+.maker{display:flex;flex-direction:column;align-items:center;gap:6px;padding-top:4px}
+.maker-mark{filter:drop-shadow(0 -1px 0 rgba(0,0,0,.85)) drop-shadow(0 1.5px 0 rgba(255,255,255,.16)) drop-shadow(0 0 1px rgba(0,0,0,.5))}
+.maker-logo{display:block;width:38px;height:42px;background:linear-gradient(180deg,#4a4b50,#3a3b40);
+  -webkit-mask:url(icons/organik-mark.png) center/contain no-repeat;mask:url(icons/organik-mark.png) center/contain no-repeat}
+.maker-text{font-family:var(--f-flap);font-weight:700;font-size:12px;letter-spacing:.32em;text-transform:uppercase;color:#4c4d52;
+  text-shadow:0 -1px 0 rgba(0,0,0,.85),0 1.5px 0 rgba(255,255,255,.14)}
+
+@media (max-width:560px){ .controls{grid-template-columns:1fr} .units{gap:14px;letter-spacing:.16em} }
+@media (prefers-reduced-motion:reduce){ .flap.flipping .leaf-top,.flap.flipping .leaf-bottom{animation:none} }
+</style>
+</head>
+<body>
+<main class="device">
+  <section class="board">
+    <div class="word" id="word" aria-live="polite"></div>
+    <div class="flaps" id="flaps" role="img" aria-label="Signal score">
+      <div class="flap"></div><div class="flap"></div>
+    </div>
+    <div class="units">
+      <span>Speed <b id="mbps">—</b></span>
+      <span>Ping <b id="ping">—</b></span>
+      <span>GPS <b id="gps">—</b></span>
+      <span id="netWrap" hidden>Net <b id="net">—</b></span>
+    </div>
+  </section>
+
+  <div class="controls">
+    <div>
+      <div class="radar-wrap">
+        <canvas class="radar" id="radar" role="img" aria-label="Map of readings around you"></canvas>
+        <span class="scale" id="scale"></span>
+      </div>
+      <div class="best" id="best">Take a few readings around you</div>
+    </div>
+    <div class="side">
+      <button class="btn primary" id="measure">Take reading</button>
+      <div class="row">
+        <button class="btn" id="auto" aria-pressed="false">Auto</button>
+        <button class="btn" id="compass" aria-pressed="false">Compass</button>
+      </div>
+      <div class="field">
+        <label for="spot">Name this spot</label>
+        <input id="spot" type="text" placeholder="e.g. Kitchen window" autocomplete="off" enterkeyhint="done">
+      </div>
+      <p class="note" id="hint">Stand still and tap Take reading, then move a few steps and repeat. Each reading tests your real speed and uses about 1 MB of data. To map mobile signal, turn Wi-Fi off first.</p>
+    </div>
+  </div>
+
+  <section class="log">
+    <div class="log-head"><span>Readings <b id="count">0</b></span><button class="linkbtn" id="clear">Clear all</button></div>
+    <div id="list"></div>
+  </section>
+
+  <footer class="maker">
+    <span class="maker-mark" aria-hidden="true"><span class="maker-logo"></span></span>
+    <span class="maker-text">An Organik Labs creation</span>
+  </footer>
+</main>
+
+<script>
+(() => {
+  const store = {
+    get(k, d){ try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch { return d; } },
+    set(k, v){ try { localStorage.setItem(k, JSON.stringify(v)); } catch {} }
+  };
+  const $ = s => document.querySelector(s);
+  const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+
+  const state = {
+    readings: store.get('sig-readings', []),
+    pos: null,          // {lat, lon, acc}
+    heading: null,      // degrees clockwise from north
+    compass: false,
+    auto: false,
+    busy: false,
+  };
+
+  /* ---------- split-flap ---------- */
+  const makeFlap = el => {
+    el.innerHTML = '<div class="half top"><span></span></div><div class="half bottom"><span></span></div>' +
+      '<div class="half leaf-top"><span></span></div><div class="half leaf-bottom"><span></span></div>';
+    const [top, bottom, lt, lb] = [...el.querySelectorAll('span')];
+    return { el, top, bottom, lt, lb, value: null, timer: 0 };
+  };
+  function settle(f){ clearTimeout(f.timer); f.el.classList.remove('flipping'); f.top.textContent = f.bottom.textContent = f.lt.textContent = f.lb.textContent = f.value; }
+  function setFlap(f, v){
+    if (f.value === v) return;
+    const old = f.value; f.value = v;
+    if (old === null || reduceMotion) { settle(f); return; }
+    clearTimeout(f.timer); f.el.classList.remove('flipping');
+    f.top.textContent = v; f.bottom.textContent = old; f.lt.textContent = old; f.lb.textContent = v;
+    void f.el.offsetWidth; f.el.classList.add('flipping');
+    f.timer = setTimeout(() => settle(f), 300);
+  }
+  const NB = ' ';
+  const scoreFlaps = [...document.querySelectorAll('#flaps .flap')].map(makeFlap);
+  function showScore(s){
+    const t = s == null ? '––' : String(Math.min(99, Math.round(s))).padStart(2, '0');
+    scoreFlaps.forEach((f, i) => { setFlap(f, t[i]); f.el.classList.toggle('lit', s != null); });
+    $('#flaps').setAttribute('aria-label', s == null ? 'No reading yet' : `Signal score ${Math.round(s)} out of 99`);
+  }
+  const WORD_LEN = 12;
+  const wordFlaps = Array.from({ length: WORD_LEN }, () => { const d = document.createElement('div'); d.className = 'flap'; $('#word').appendChild(d); return makeFlap(d); });
+  let wordTimers = [];
+  function renderWord(text){
+    text = text.toUpperCase().slice(0, WORD_LEN);
+    const pad = Math.floor((WORD_LEN - text.length) / 2);
+    const cells = (' '.repeat(pad) + text).padEnd(WORD_LEN, ' ').split('').map(c => c === ' ' ? NB : c);
+    $('#word').setAttribute('aria-label', text);
+    wordTimers.forEach(clearTimeout); wordTimers = [];
+    cells.forEach((c, i) => { const f = wordFlaps[i]; if (f.value === null) setFlap(f, c); else wordTimers.push(setTimeout(() => setFlap(f, c), i * 35)); });
+  }
+
+  /* ---------- scoring ---------- */
+  // speed carries most weight, ping and dropped pings pull it down; 0 = no connection at all
+  function score(r){
+    if (r.dead) return 0;
+    const sp = Math.max(0, Math.min(1, Math.log10(1 + r.mbps * 4) / Math.log10(1 + 50 * 4)));   // ~50 Mbps tops out
+    const pg = Math.max(0, Math.min(1, 1 - (Math.log10(Math.max(r.ms, 30)) - Math.log10(30)) / (Math.log10(1500) - Math.log10(30))));
+    return Math.max(1, (0.65 * sp + 0.35 * pg) * 99 * (1 - r.loss * 0.6));
+  }
+  const quality = s => s >= 60 ? 'good' : s >= 30 ? 'ok' : 'poor';
+  const colorOf = s => s >= 60 ? css('--teal') : s >= 30 ? css('--amber') : css('--red');
+  const wordOf = s => s === 0 ? 'Dead zone' : s >= 80 ? 'Excellent' : s >= 60 ? 'Good' : s >= 30 ? 'Usable' : 'Weak';
+  const fmtMbps = m => m >= 10 ? m.toFixed(0) : m >= 1 ? m.toFixed(1) : m.toFixed(2);
+
+  /* ---------- measuring ---------- */
+  const bust = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+  async function timedFetch(url, ms){
+    const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), ms);
+    try { return await fetch(url, { cache: 'no-store', signal: ctl.signal }); }
+    finally { clearTimeout(t); }
+  }
+  async function measure(){
+    const pings = []; let lost = 0;
+    for (let i = 0; i < 5; i++) {
+      const t0 = performance.now();
+      try { const r = await timedFetch('probe-ping.txt?' + bust(), 3000); await r.text(); if (!r.ok) throw 0; pings.push(performance.now() - t0); }
+      catch { lost++; }
+    }
+    if (!pings.length) return { dead: true, ms: null, mbps: 0, loss: 1 };
+    pings.sort((a, b) => a - b);
+    const ms = pings[pings.length >> 1];
+    // download test: up to 1 MB, stop after 6 seconds and use what arrived
+    let bytes = 0, mbps = 0;
+    const ctl = new AbortController(), stopAt = setTimeout(() => ctl.abort(), 6000);
+    try {
+      const res = await fetch('probe-1mb.bin?' + bust(), { cache: 'no-store', signal: ctl.signal });
+      const t0 = performance.now();
+      const reader = res.body.getReader();
+      try { for (;;) { const { done, value } = await reader.read(); if (done) break; bytes += value.length; } }
+      catch { /* aborted: keep the partial count */ }
+      const secs = Math.max(0.05, (performance.now() - t0) / 1000);
+      mbps = bytes * 8 / secs / 1e6;
+    } catch { mbps = 0; }
+    clearTimeout(stopAt);
+    return { dead: false, ms: Math.round(ms), mbps, loss: lost / 5, kb: Math.round(bytes / 1024) };
+  }
+
+  async function takeReading(){
+    if (state.busy) return;
+    state.busy = true;
+    const btn = $('#measure'); btn.disabled = true; btn.textContent = 'Measuring…';
+    renderWord('Measuring');
+    startGps();
+    const r = await measure();
+    const conn = navigator.connection;
+    const reading = {
+      id: bust(), t: Date.now(),
+      label: $('#spot').value.trim(),
+      lat: state.pos ? state.pos.lat : null, lon: state.pos ? state.pos.lon : null, acc: state.pos ? Math.round(state.pos.acc) : null,
+      ms: r.ms, mbps: +r.mbps.toFixed(2), loss: r.loss, dead: r.dead,
+      net: conn && conn.type ? conn.type : null,
+    };
+    reading.score = Math.round(score(reading));
+    state.readings.unshift(reading);
+    store.set('sig-readings', state.readings);
+    $('#spot').value = '';
+    showReading(reading);
+    renderList(); drawRadar();
+    btn.disabled = false; btn.textContent = 'Take reading';
+    state.busy = false;
+    if (navigator.vibrate) navigator.vibrate(20);
+  }
+  function showReading(r){
+    document.body.dataset.q = quality(r.score);
+    showScore(r.score); renderWord(wordOf(r.score));
+    $('#mbps').textContent = r.dead ? '0' : fmtMbps(r.mbps) + ' Mbps';
+    $('#ping').textContent = r.dead ? 'none' : r.ms + ' ms';
+  }
+
+  /* ---------- location and compass ---------- */
+  let gpsWatch = null;
+  function startGps(){
+    if (gpsWatch !== null || !navigator.geolocation) return;
+    gpsWatch = navigator.geolocation.watchPosition(p => {
+      state.pos = { lat: p.coords.latitude, lon: p.coords.longitude, acc: p.coords.accuracy };
+      $('#gps').textContent = '±' + Math.round(p.coords.accuracy) + ' m';
+      drawRadar();
+    }, err => {
+      $('#gps').textContent = 'off';
+      if (err.code === 1) $('#hint').textContent = 'Location is blocked, so readings are listed but can\'t go on the radar. Allow location for this page in your browser settings to map them.';
+    }, { enableHighAccuracy: true, maximumAge: 2000, timeout: 20000 });
+  }
+  function onOrient(e){
+    let h = null;
+    if (typeof e.webkitCompassHeading === 'number') h = e.webkitCompassHeading;
+    else if (e.absolute && typeof e.alpha === 'number') h = (360 - e.alpha) % 360;
+    if (h !== null) state.heading = h;
+  }
+  async function toggleCompass(){
+    if (state.compass) { state.compass = false; syncButtons(); return; }
+    try {
+      if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+        if (await DeviceOrientationEvent.requestPermission() !== 'granted') throw 0;
+      }
+      addEventListener('deviceorientationabsolute', onOrient);
+      addEventListener('deviceorientation', onOrient);
+      state.compass = true;
+      setTimeout(() => { if (state.compass && state.heading === null) $('#hint').textContent = 'No compass found on this device, so the radar stays with north at the top.'; }, 2500);
+    } catch {
+      $('#hint').textContent = 'Compass access was declined, so the radar keeps north at the top.';
+    }
+    syncButtons();
+  }
+
+  /* ---------- geometry ---------- */
+  function offset(a, b){ // metres east (x) and north (y) of b from a
+    const x = (b.lon - a.lon) * Math.cos(a.lat * Math.PI / 180) * 111320;
+    const y = (b.lat - a.lat) * 110540;
+    return { x, y, d: Math.hypot(x, y) };
+  }
+  const DIRS = ['north','north-east','east','south-east','south','south-west','west','north-west'];
+  const dirOf = (x, y) => DIRS[Math.round(((Math.atan2(x, y) * 180 / Math.PI) + 360) % 360 / 45) % 8];
+  const located = () => state.readings.filter(r => r.lat !== null);
+  function centre(){
+    if (state.pos) return state.pos;
+    const L = located(); if (!L.length) return null;
+    return { lat: L.reduce((s, r) => s + r.lat, 0) / L.length, lon: L.reduce((s, r) => s + r.lon, 0) / L.length };
+  }
+  function bestReading(){
+    return state.readings.reduce((b, r) => (!b || r.score > b.score) ? r : b, null);
+  }
+
+  /* ---------- radar ---------- */
+  const cv = $('#radar'), g = cv.getContext('2d');
+  let sweep = 0, W = 0;
+  function sizeRadar(){
+    const r = cv.getBoundingClientRect(), dpr = Math.min(3, devicePixelRatio || 1);
+    W = r.width; cv.width = Math.round(r.width * dpr); cv.height = Math.round(r.width * dpr);
+    g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+  const NICE = [5, 10, 20, 30, 50, 100, 200, 500, 1000, 2000];
+  function drawRadar(){
+    if (!W) return;
+    const c = W / 2, R = c - 18;
+    g.clearRect(0, 0, W, W);
+    const rot = state.compass && state.heading !== null ? -state.heading * Math.PI / 180 : 0;
+    const ctr = centre();
+    const L = located();
+    let maxD = 0;
+    if (ctr) L.forEach(r => { maxD = Math.max(maxD, offset(ctr, r).d); });
+    const range = NICE.find(n => n >= maxD * 1.15) || NICE[NICE.length - 1];
+    $('#scale').textContent = ctr && L.length ? `Edge ${range} m` : '';
+
+    // rings and cross
+    g.lineWidth = 1;
+    for (let i = 1; i <= 4; i++) { g.strokeStyle = i === 4 ? '#34353a' : '#26272a'; g.beginPath(); g.arc(c, c, R * i / 4, 0, Math.PI * 2); g.stroke(); }
+    g.save(); g.translate(c, c); g.rotate(rot);
+    g.strokeStyle = '#26272a'; g.beginPath(); g.moveTo(-R, 0); g.lineTo(R, 0); g.moveTo(0, -R); g.lineTo(0, R); g.stroke();
+    // compass letters
+    g.fillStyle = css('--muted'); g.font = '600 13px "Barlow Condensed", sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+    [['N', 0], ['E', 90], ['S', 180], ['W', 270]].forEach(([t, a]) => {
+      const ang = a * Math.PI / 180; g.save(); g.translate(Math.sin(ang) * (R + 10), -Math.cos(ang) * (R + 10)); g.rotate(-rot);
+      g.fillStyle = t === 'N' ? css('--amber') : css('--muted'); g.fillText(t, 0, 0); g.restore();
+    });
+    g.restore();
+
+    // sweep
+    if (!reduceMotion) {
+      const grad = g.createConicGradient ? g.createConicGradient(sweep - Math.PI / 2 - 0.9, c, c) : null;
+      if (grad) {
+        grad.addColorStop(0, 'rgba(98,199,168,0)'); grad.addColorStop(0.14, 'rgba(98,199,168,.16)'); grad.addColorStop(0.1401, 'rgba(98,199,168,0)'); grad.addColorStop(1, 'rgba(98,199,168,0)');
+        g.fillStyle = grad; g.beginPath(); g.arc(c, c, R, 0, Math.PI * 2); g.fill();
+      }
+    }
+
+    // readings
+    const best = bestReading();
+    if (ctr) {
+      const pts = L.map(r => { const o = offset(ctr, r); return { r, x: o.x / range * R, y: -o.y / range * R }; });
+      g.save(); g.translate(c, c); g.rotate(rot);
+      // path to the best spot
+      const bp = pts.find(p => p.r === best);
+      if (bp && Math.hypot(bp.x, bp.y) > 6) {
+        g.setLineDash([4, 5]); g.strokeStyle = css('--teal'); g.lineWidth = 1.5;
+        g.beginPath(); g.moveTo(0, 0); g.lineTo(bp.x, bp.y); g.stroke(); g.setLineDash([]);
+      }
+      pts.slice().reverse().forEach(p => {
+        const col = colorOf(p.r.score), rr = p.r === best ? 9 : 6.5;
+        g.fillStyle = col; g.globalAlpha = .18; g.beginPath(); g.arc(p.x, p.y, rr * 2.2, 0, Math.PI * 2); g.fill();
+        g.globalAlpha = 1; g.beginPath(); g.arc(p.x, p.y, rr, 0, Math.PI * 2); g.fill();
+        if (p.r === best) { g.strokeStyle = '#141517'; g.lineWidth = 2; g.stroke(); }
+      });
+      g.restore();
+    }
+    // you, in the middle; arrow shows which way the phone points when the compass is on
+    g.fillStyle = css('--ink');
+    g.beginPath(); g.arc(c, c, 5, 0, Math.PI * 2); g.fill();
+    if (state.compass && state.heading !== null) { g.beginPath(); g.moveTo(c, c - 16); g.lineTo(c - 6, c - 6); g.lineTo(c + 6, c - 6); g.closePath(); g.fill(); }
+    updateBest(ctr, best);
+  }
+  function updateBest(ctr, best){
+    const el = $('#best');
+    if (!best) { el.textContent = 'Take a few readings around you'; return; }
+    const name = best.label || (best.mbps ? fmtMbps(best.mbps) + ' Mbps spot' : 'best spot');
+    if (state.readings.length < 2) { el.innerHTML = 'Move a few steps and take another'; return; }
+    if (ctr && best.lat !== null && state.pos) {
+      const o = offset(state.pos, best);
+      const acc = Math.max(state.pos.acc || 0, best.acc || 0);
+      if (o.d < Math.max(4, acc * 0.6)) { el.innerHTML = `Best: <b>${esc(name)}</b> · right about here`; return; }
+      el.innerHTML = `Best: <b>${esc(name)}</b> · ${Math.round(o.d)} m ${dirOf(o.x, o.y)}`;
+    } else el.innerHTML = `Best so far: <b>${esc(name)}</b> · score ${best.score}`;
+  }
+  const esc = s => s.replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
+  function tick(){
+    sweep = (sweep + 0.035) % (Math.PI * 2);
+    if (!document.hidden) drawRadar();
+    requestAnimationFrame(tick);
+  }
+
+  /* ---------- log ---------- */
+  function renderList(){
+    const list = $('#list'), best = bestReading();
+    $('#count').textContent = state.readings.length;
+    if (!state.readings.length) { list.innerHTML = '<div class="empty">No readings yet.</div>'; return; }
+    const sorted = state.readings.slice().sort((a, b) => b.score - a.score);
+    list.innerHTML = sorted.map(r => {
+      const time = new Date(r.t).toLocaleString([], { weekday: 'short', hour: '2-digit', minute: '2-digit' });
+      const name = r.label || (r.acc != null ? `Spot · ±${r.acc} m` : 'Spot · no GPS');
+      const meta = r.dead ? `No connection · ${time}` : `${fmtMbps(r.mbps)} Mbps · ${r.ms} ms${r.loss ? ` · ${Math.round(r.loss * 100)}% lost` : ''}${r.net ? ' · ' + r.net : ''} · ${time}`;
+      return `<div class="entry${r === best && sorted.length > 1 ? ' top1' : ''}">
+        <span class="chip" style="background:${colorOf(r.score)}">${r.score}</span>
+        <span style="min-width:0"><div class="e-name">${esc(name)}</div><div class="e-meta">${meta}</div></span>
+        <button class="e-del" data-id="${r.id}" aria-label="Delete this reading">×</button></div>`;
+    }).join('');
+  }
+  $('#list').addEventListener('click', e => {
+    const b = e.target.closest('.e-del'); if (!b) return;
+    state.readings = state.readings.filter(r => r.id !== b.dataset.id);
+    store.set('sig-readings', state.readings); renderList(); drawRadar();
+  });
+
+  /* ---------- controls ---------- */
+  function syncButtons(){
+    $('#auto').setAttribute('aria-pressed', state.auto);
+    $('#auto').textContent = state.auto ? 'Auto on' : 'Auto';
+    $('#compass').setAttribute('aria-pressed', state.compass);
+  }
+  let autoTimer = 0;
+  async function autoLoop(){
+    if (!state.auto) return;
+    await takeReading();
+    if (state.auto) autoTimer = setTimeout(autoLoop, 8000);
+  }
+  $('#measure').onclick = takeReading;
+  $('#auto').onclick = () => {
+    state.auto = !state.auto; clearTimeout(autoTimer); syncButtons();
+    if (state.auto) { $('#hint').textContent = 'Auto takes a reading every 8 seconds. Walk slowly around and the radar fills in.'; autoLoop(); }
+  };
+  $('#compass').onclick = toggleCompass;
+  $('#spot').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); takeReading(); } });
+  $('#clear').onclick = () => {
+    if (!state.readings.length || !confirm('Clear all readings?')) return;
+    state.readings = []; store.set('sig-readings', []); renderList(); drawRadar();
+    showScore(null); renderWord('Signal'); document.body.dataset.q = '';
+    $('#mbps').textContent = $('#ping').textContent = '—';
+  };
+  document.addEventListener('visibilitychange', () => { if (document.hidden && state.auto) { state.auto = false; clearTimeout(autoTimer); syncButtons(); } });
+  addEventListener('resize', () => { sizeRadar(); drawRadar(); });
+
+  const conn = navigator.connection;
+  const showNet = () => { if (conn && conn.type) { $('#netWrap').hidden = false; $('#net').textContent = conn.type; } };
+  showNet(); if (conn && conn.addEventListener) conn.addEventListener('change', showNet);
+
+  // start
+  sizeRadar(); renderList();
+  if (state.readings.length) showReading(state.readings[0]); else { showScore(null); renderWord('Signal'); }
+  if (navigator.permissions && navigator.permissions.query) {
+    navigator.permissions.query({ name: 'geolocation' }).then(p => { if (p.state === 'granted') startGps(); }).catch(() => {});
+  }
+  requestAnimationFrame(tick);
+
+  window.__signal = { score, offset, dirOf, state, drawRadar, renderList };
+})();
+</script>
+</body>
+</html>
