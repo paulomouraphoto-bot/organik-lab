@@ -95,7 +95,7 @@ const GLOOM = '/\b(kill(?:s|ed|ing)?|dead|deaths?|dies|died|murder\w*|war|wars|a
 if (!function_exists('str_starts_with')) { function str_starts_with($h, $n) { return strncmp($h, $n, strlen($n)) === 0; } }
 
 header('Content-Type: application/json; charset=utf-8');
-header('Cache-Control: public, max-age=300');
+header('Cache-Control: private, no-store'); // never let a shared cache mix up answers for different ?groups=
 header('X-Content-Type-Options: nosniff');
 
 $asked = array_filter(array_map('trim', explode(',', strtolower($_GET['groups'] ?? 'world'))));
