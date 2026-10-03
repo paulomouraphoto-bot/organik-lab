@@ -9,6 +9,7 @@ jobs:
         run: |
           for g in world tech science business health culture sport environment good wonders green nope; do
             body=$(curl -s -m 40 "https://lab.organikreations.com/news/api.php?groups=$g")
-            echo "== $g"; echo "$body" | jq -c '{groups, failed, items: (.items|length), images: ([.items[]|select(.image!=null)]|length), first: (.items[0]|{source,title})}' 2>/dev/null || echo "${body:0:200}"
+            out=$(echo "$body" | jq -c '{groups, failed, items: (.items|length), images: ([.items[]|select(.image!=null)]|length), first: (.items[0].source)}' 2>/dev/null || echo "${body:0:150}")
+            echo "::notice title=$g::$out"
           done
-          curl -sI "https://lab.organikreations.com/news/api.php?groups=green" | grep -iE "cache|x-litespeed|age|server"
+          echo "::notice title=headers::$(curl -sI 'https://lab.organikreations.com/news/api.php?groups=green' | grep -iE 'cache|litespeed|server' | tr '\r\n' '  ')"
