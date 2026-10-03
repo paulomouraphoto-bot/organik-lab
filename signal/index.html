@@ -98,6 +98,13 @@ button,input{font:inherit;color:inherit}
 .radar{width:100%;height:100%;display:block;border-radius:50%;
   background:radial-gradient(circle at 50% 50%,#1d1f21 0,#17181a 70%,#121314 100%);
   box-shadow:inset 0 0 0 1px #2c2d31,inset 0 0 40px rgba(0,0,0,.6),0 10px 24px -10px rgba(0,0,0,.7)}
+.radar{touch-action:pan-y;cursor:default}
+.radar.zoomed{touch-action:none;cursor:grab}
+.radar.dragging{cursor:grabbing}
+.zoom{position:absolute;top:2px;right:2px;display:flex;flex-direction:column;gap:6px}
+.zoom .step{width:36px;height:36px;font-size:20px;background:rgba(37,38,42,.92)}
+.zoom .step.fit{font-size:13px;letter-spacing:.06em}
+.zoom .step[disabled]{opacity:.35;cursor:default}
 .scale{position:absolute;right:4px;bottom:2px;font-family:var(--f-flap);font-size:13px;letter-spacing:.14em;color:var(--muted);text-transform:uppercase}
 .best{font-family:var(--f-flap);font-size:15px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);text-align:center;margin-top:8px;min-height:1.4em}
 .best b{color:var(--teal);font-weight:600}
@@ -197,6 +204,11 @@ button,input{font:inherit;color:inherit}
       <div class="radar-wrap">
         <canvas class="radar" id="radar" role="img" aria-label="Map of readings around you"></canvas>
         <span class="scale" id="scale"></span>
+        <div class="zoom">
+          <button class="step" id="zoomIn" aria-label="Zoom in">+</button>
+          <button class="step" id="zoomOut" aria-label="Zoom out">−</button>
+          <button class="step fit" id="zoomFit" aria-label="Show all readings">Fit</button>
+        </div>
       </div>
       <div class="best" id="best">Take a few readings around you</div>
     </div>
@@ -573,6 +585,10 @@ button,input{font:inherit;color:inherit}
     g.setTransform(dpr, 0, 0, dpr, 0, 0);
   }
   const NICE = [5, 10, 20, 30, 50, 100, 200, 500, 1000, 2000];
+  // view: zoom 1 shows every reading; pan is in metres (east, north) from the radar's centre point
+  const view = { zoom: 1, panX: 0, panY: 0, auto: 10, range: 10, rot: 0, R: 1, pts: [], picked: null };
+  const MAX_ZOOM = 40;
+  const fmtM = m => m < 10 ? m.toFixed(1).replace(/\.0$/, '') : Math.round(m);
   function drawRadar(){
     if (!W) return;
     const c = W / 2, R = c - 18;
@@ -581,8 +597,15 @@ button,input{font:inherit;color:inherit}
     const ctr = centre(), L = located(), you = !!(state.pos && ctr === state.pos);
     let maxD = 0;
     if (ctr) L.forEach(r => { maxD = Math.max(maxD, offset(ctr, r).d); });
-    const range = NICE.find(n => n >= maxD * 1.15) || NICE[NICE.length - 1];
-    $('#scale').textContent = ctr && L.length ? `Edge ${range} m` : '';
+    view.auto = NICE.find(n => n >= maxD * 1.15) || NICE[NICE.length - 1];
+    const range = view.range = Math.max(1.5, view.auto / view.zoom);
+    view.rot = rot; view.R = R;
+    $('#scale').textContent = ctr && L.length ? `Edge ${fmtM(range)} m` : '';
+    cv.classList.toggle('zoomed', view.zoom > 1.01);
+    $('#zoomOut').disabled = view.zoom <= 1.01 && !view.panX && !view.panY;
+    $('#zoomFit').disabled = $('#zoomOut').disabled;
+    $('#zoomIn').disabled = view.zoom >= MAX_ZOOM;
+    const toPx = (mx, my) => [(mx - view.panX) / range * R, -(my - view.panY) / range * R];
 
     g.lineWidth = 1;
     for (let i = 1; i <= 4; i++) { g.strokeStyle = i === 4 ? '#34353a' : '#26272a'; g.beginPath(); g.arc(c, c, R * i / 4, 0, Math.PI * 2); g.stroke(); }
@@ -602,31 +625,140 @@ button,input{font:inherit;color:inherit}
     }
 
     const best = bestReading();
+    const [ux, uy] = toPx(0, 0); // where you stand
+    view.pts = [];
+    // clip to the dial so zoomed-in dots don't spill over the edge
+    g.save(); g.beginPath(); g.arc(c, c, R + 4, 0, Math.PI * 2); g.clip();
     if (ctr) {
-      const pts = L.map(r => { const o = offset(ctr, r); return { r, x: o.x / range * R, y: -o.y / range * R }; });
+      const pts = L.map(r => { const o = offset(ctr, r); const [x, y] = toPx(o.x, o.y); return { r, x, y }; });
       g.save(); g.translate(c, c); g.rotate(rot);
       const bp = pts.find(p => p.r === best);
-      if (bp && you && Math.hypot(bp.x, bp.y) > 6) {
+      if (bp && you && Math.hypot(bp.x - ux, bp.y - uy) > 6) {
         g.setLineDash([4, 5]); g.strokeStyle = css('--teal'); g.lineWidth = 1.5;
-        g.beginPath(); g.moveTo(0, 0); g.lineTo(bp.x, bp.y); g.stroke(); g.setLineDash([]);
+        g.beginPath(); g.moveTo(ux, uy); g.lineTo(bp.x, bp.y); g.stroke(); g.setLineDash([]);
       }
-      // oldest first so today's readings sit on top
+      // dots grow a little as you zoom in so clusters separate
+      const grow = Math.min(1.6, 1 + Math.log2(view.zoom) * 0.12);
       pts.slice().sort((a, b) => a.r.t - b.r.t).forEach(p => {
-        const col = colorOf(p.r.score), rr = p.r === best ? 9 : 6.5, fade = fadeOf(p.r);
+        const col = colorOf(p.r.score), rr = (p.r === best ? 9 : 6.5) * grow, fade = fadeOf(p.r);
         g.fillStyle = col; g.globalAlpha = .18 * fade; g.beginPath(); g.arc(p.x, p.y, rr * 2.2, 0, Math.PI * 2); g.fill();
         g.globalAlpha = fade; g.beginPath(); g.arc(p.x, p.y, rr, 0, Math.PI * 2); g.fill();
         g.globalAlpha = 1;
         if (p.r === best) { g.strokeStyle = '#141517'; g.lineWidth = 2; g.stroke(); }
+        if (p.r === view.picked) { g.strokeStyle = css('--ink'); g.lineWidth = 2.5; g.beginPath(); g.arc(p.x, p.y, rr + 4, 0, Math.PI * 2); g.stroke(); }
+        // remember screen positions for tapping
+        view.pts.push({ r: p.r, sx: c + p.x * Math.cos(rot) - p.y * Math.sin(rot), sy: c + p.x * Math.sin(rot) + p.y * Math.cos(rot) });
       });
       g.restore();
     }
     if (you || !ctr) {
-      g.fillStyle = css('--ink');
-      g.beginPath(); g.arc(c, c, 5, 0, Math.PI * 2); g.fill();
-      if (state.compass && state.heading !== null) { g.beginPath(); g.moveTo(c, c - 16); g.lineTo(c - 6, c - 6); g.lineTo(c + 6, c - 6); g.closePath(); g.fill(); }
+      const sx = c + ux * Math.cos(rot) - uy * Math.sin(rot), sy = c + ux * Math.sin(rot) + uy * Math.cos(rot);
+      if (Math.hypot(sx - c, sy - c) < R) {
+        g.fillStyle = css('--ink');
+        g.beginPath(); g.arc(sx, sy, 5, 0, Math.PI * 2); g.fill();
+        if (state.compass && state.heading !== null) { g.beginPath(); g.moveTo(sx, sy - 16); g.lineTo(sx - 6, sy - 6); g.lineTo(sx + 6, sy - 6); g.closePath(); g.fill(); }
+      }
     }
-    updateBest(best, you);
+    g.restore();
+    if (view.picked && !here().includes(view.picked)) view.picked = null;
+    view.picked ? showPicked(view.picked) : updateBest(best, you);
   }
+  function showPicked(r){
+    const name = r.label || 'Spot';
+    const d = new Date(r.t), day = dayLabel(r.t), time = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const stats = r.dead ? 'no connection' : `${fmtMbps(r.mbps)} Mbps · ${r.ms} ms`;
+    $('#best').innerHTML = `<b style="color:${colorOf(r.score)}">${esc(name)} · ${r.score}</b> · ${stats} · ${day === 'today' ? time : day}`;
+  }
+
+  /* ---------- zoom and pan ---------- */
+  // turn a screen offset from the dial centre into metres, undoing the compass rotation
+  function screenToMetres(dx, dy){
+    const cr = Math.cos(-view.rot), sr = Math.sin(-view.rot);
+    const x = dx * cr - dy * sr, y = dx * sr + dy * cr;
+    return [x / view.R * view.range, -y / view.R * view.range];
+  }
+  function clampPan(){
+    const lim = view.auto * 1.2;
+    view.panX = Math.max(-lim, Math.min(lim, view.panX));
+    view.panY = Math.max(-lim, Math.min(lim, view.panY));
+    if (view.zoom <= 1.001) { view.zoom = 1; view.panX = view.panY = 0; }
+  }
+  // zoom keeping the point under (dx, dy) from the centre in place
+  function zoomAt(newZoom, dx = 0, dy = 0){
+    newZoom = Math.max(1, Math.min(MAX_ZOOM, newZoom));
+    const [ax, ay] = screenToMetres(dx, dy);
+    const mx = view.panX + ax, my = view.panY + ay;
+    view.zoom = newZoom;
+    view.range = Math.max(1.5, view.auto / view.zoom);
+    const [bx, by] = screenToMetres(dx, dy);
+    view.panX = mx - bx; view.panY = my - by;
+    clampPan(); drawRadar();
+  }
+  function resetView(){ view.zoom = 1; view.panX = view.panY = 0; view.picked = null; drawRadar(); }
+  $('#zoomIn').onclick = () => zoomAt(view.zoom * 1.8);
+  $('#zoomOut').onclick = () => zoomAt(view.zoom / 1.8);
+  $('#zoomFit').onclick = resetView;
+
+  const ptrs = new Map();
+  let pinch = null, drag = null, tapStart = null;
+  const local = e => { const b = cv.getBoundingClientRect(); return { x: e.clientX - b.left, y: e.clientY - b.top }; };
+  cv.addEventListener('pointerdown', e => {
+    const p = local(e); ptrs.set(e.pointerId, p);
+    try { cv.setPointerCapture(e.pointerId); } catch {}
+    if (ptrs.size === 1) { tapStart = { ...p, t: performance.now() }; drag = { ...p }; }
+    if (ptrs.size === 2) {
+      const [a, b] = [...ptrs.values()];
+      pinch = { d: Math.hypot(a.x - b.x, a.y - b.y) || 1, zoom: view.zoom, mid: { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 } };
+      tapStart = null; drag = null;
+    }
+  });
+  cv.addEventListener('pointermove', e => {
+    if (!ptrs.has(e.pointerId)) return;
+    const p = local(e); ptrs.set(e.pointerId, p);
+    const c = W / 2;
+    if (pinch && ptrs.size >= 2) {
+      e.preventDefault();
+      const [a, b] = [...ptrs.values()];
+      const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+      // follow the fingers: pan by how far the midpoint moved, then zoom around it
+      const [mx, my] = screenToMetres(mid.x - pinch.mid.x, mid.y - pinch.mid.y);
+      view.panX -= mx; view.panY -= my; pinch.mid = mid;
+      zoomAt(pinch.zoom * Math.hypot(a.x - b.x, a.y - b.y) / pinch.d, mid.x - c, mid.y - c);
+    } else if (drag && view.zoom > 1.01) {
+      e.preventDefault();
+      const [mx, my] = screenToMetres(p.x - drag.x, p.y - drag.y);
+      view.panX -= mx; view.panY -= my; drag = { ...p };
+      cv.classList.add('dragging'); clampPan(); drawRadar();
+    }
+    if (tapStart && Math.hypot(p.x - tapStart.x, p.y - tapStart.y) > 8) tapStart = null;
+  });
+  const endPtr = e => {
+    ptrs.delete(e.pointerId);
+    cv.classList.remove('dragging');
+    if (ptrs.size < 2) pinch = null;
+    if (ptrs.size === 1) { const [q] = [...ptrs.values()]; drag = { ...q }; }
+    if (!ptrs.size) {
+      drag = null;
+      if (tapStart && e.type === 'pointerup' && performance.now() - tapStart.t < 350) {
+        // tap: pick the nearest dot, double tap zooms in there
+        const hit = view.pts.reduce((b, q) => { const d = Math.hypot(q.sx - tapStart.x, q.sy - tapStart.y); return d < (b ? b.d : 22) ? { q, d } : b; }, null);
+        const now = performance.now();
+        if (!hit && lastTap && now - lastTap < 300) zoomAt(view.zoom * 2, tapStart.x - W / 2, tapStart.y - W / 2);
+        view.picked = hit ? (view.picked === hit.q.r ? null : hit.q.r) : null;
+        lastTap = hit ? 0 : now;
+        drawRadar();
+      }
+      tapStart = null;
+    }
+  };
+  let lastTap = 0;
+  cv.addEventListener('pointerup', endPtr);
+  cv.addEventListener('pointercancel', endPtr);
+  cv.addEventListener('wheel', e => {
+    e.preventDefault();
+    const p = local(e);
+    zoomAt(view.zoom * Math.exp(-e.deltaY * 0.0022), p.x - W / 2, p.y - W / 2);
+  }, { passive: false });
   function updateBest(best, you){
     const el = $('#best');
     if (!best) { el.textContent = place() ? 'No readings here yet' : 'Take a few readings around you'; return; }
@@ -674,7 +806,8 @@ button,input{font:inherit;color:inherit}
     save(); renderAll(); sync();
   });
 
-  function renderAll(){ renderPlaces(); renderList(); renderSync(); drawRadar(); }
+  let viewPlace = null;
+  function renderAll(){ if (viewPlace !== state.placeId) { viewPlace = state.placeId; view.zoom = 1; view.panX = view.panY = 0; view.picked = null; } renderPlaces(); renderList(); renderSync(); drawRadar(); }
 
   /* ---------- controls ---------- */
   function syncButtons(){
@@ -793,7 +926,7 @@ button,input{font:inherit;color:inherit}
   sync();
   requestAnimationFrame(tick);
 
-  window.__signal = { score, offset, dirOf, state, drawRadar, sync, merge, takeReading, newCode };
+  window.__signal = { score, offset, dirOf, state, drawRadar, sync, merge, takeReading, newCode, view, zoomAt, screenToMetres };
 })();
 </script>
 </body>

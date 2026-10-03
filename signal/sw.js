@@ -1,5 +1,5 @@
 // Offline shell for Signal Mapper. Speed-test probes always go straight to the network.
-const CACHE = 'signal-mapper-v2';
+const CACHE = 'signal-mapper-v3';
 const CORE = ['./', './manifest.webmanifest', './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png', './icons/organik-mark.png'];
 
 self.addEventListener('install', e => {
