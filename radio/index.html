@@ -1,0 +1,748 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Tuner</title>
+<meta name="description" content="A world radio tuner: all of FIP's channels, Scottish stations and thousands more, on a dial you turn.">
+<meta name="theme-color" content="#141517">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Tuner">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/favicon-32.png" sizes="32x32">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&display=swap">
+<script>if ('serviceWorker' in navigator) addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));</script>
+<style>
+:root{
+  color-scheme:dark;
+  --bg:#141517;--panel:#1c1d20;--panel2:#232428;--edge:#2a2b2f;--ink:#f1ebdd;--muted:#8c8a84;--faint:#5c5b58;
+  --amber:#f4b63f;--amber-deep:#c98a1c;--needle:#ff4a3d;
+  --glass-ink:#f7e2b4;
+  --f-head:"Barlow Condensed","Arial Narrow",Arial,sans-serif;
+  --f-body:"Barlow","Helvetica Neue",Arial,sans-serif;
+  --slot:104px;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:16px;line-height:1.45}
+button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer}
+button:focus-visible,input:focus-visible,select:focus-visible,.dial:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+.app{max-width:560px;margin:0 auto;padding:calc(env(safe-area-inset-top) + 18px) 16px calc(env(safe-area-inset-bottom) + 24px);display:flex;flex-direction:column;gap:16px}
+
+/* ---- header ---- */
+.top{display:flex;align-items:center;justify-content:space-between}
+.brand{display:flex;align-items:center;gap:10px;text-decoration:none;color:inherit}
+.brand h1{font-family:var(--f-head);font-weight:700;font-size:30px;letter-spacing:.14em;text-transform:uppercase;margin:0;line-height:1}
+.lamp{width:10px;height:10px;border-radius:50%;background:#3b2a24;box-shadow:inset 0 1px 2px rgba(0,0,0,.6);transition:background .4s,box-shadow .4s}
+.on .lamp{background:var(--needle);box-shadow:0 0 10px 2px rgba(255,74,61,.55),inset 0 -1px 2px rgba(0,0,0,.3)}
+.onair{font-family:var(--f-head);font-weight:600;font-size:12px;letter-spacing:.24em;text-transform:uppercase;color:var(--faint);display:flex;align-items:center;gap:8px;transition:color .4s}
+.on .onair{color:var(--ink)}
+
+/* ---- band keys ---- */
+.bands{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;background:#0d0e10;padding:6px;border-radius:12px;border:1px solid var(--edge)}
+.band{position:relative;height:46px;border-radius:7px;background:linear-gradient(#2a2b30,#1f2024);box-shadow:0 3px 0 #0a0a0b,inset 0 1px 0 rgba(255,255,255,.06);
+  font-family:var(--f-head);font-weight:600;font-size:14px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);transition:transform .08s,box-shadow .08s,color .2s;padding-top:6px}
+.band::before{content:"";position:absolute;left:50%;top:7px;width:14px;height:3px;margin-left:-7px;border-radius:2px;background:#3a3b40;transition:background .2s,box-shadow .2s}
+.band[aria-pressed="true"]{transform:translateY(2px);box-shadow:0 1px 0 #0a0a0b,inset 0 1px 0 rgba(255,255,255,.04);color:var(--ink)}
+.band[aria-pressed="true"]::before{background:var(--amber);box-shadow:0 0 8px rgba(244,182,63,.7)}
+
+/* ---- the dial ---- */
+.dialwrap{position:relative;border-radius:14px;padding:7px;background:linear-gradient(#2c2d31,#18191c);box-shadow:0 10px 30px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.07)}
+.glass{position:relative;height:144px;border-radius:9px;overflow:hidden;background:#0f0c08;isolation:isolate}
+.glass::before{content:"";position:absolute;inset:0;z-index:0;background:radial-gradient(120% 90% at 50% 55%,#5a3f17 0%,#2b1e0c 45%,#120d07 100%);opacity:.35;transition:opacity .8s}
+.on .glass::before{opacity:1}
+.glass::after{content:"";position:absolute;inset:0;z-index:3;pointer-events:none;
+  background:linear-gradient(90deg,#0f0c08 0%,rgba(15,12,8,0) 16%,rgba(15,12,8,0) 84%,#0f0c08 100%),
+             linear-gradient(170deg,rgba(255,255,255,.10) 0%,rgba(255,255,255,0) 38%);}
+.dial{position:absolute;inset:0;z-index:1;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;scrollbar-width:none;overscroll-behavior-x:contain;touch-action:pan-x;cursor:grab}
+.dial::-webkit-scrollbar{display:none}
+.dial:active{cursor:grabbing}
+.track{position:relative;height:100%;display:flex;color:var(--glass-ink);opacity:.45;transition:opacity .8s}
+.on .track{opacity:1}
+.spacer{flex:none}
+.slot{flex:none;width:var(--slot);position:relative;scroll-snap-align:center}
+.slot .num{position:absolute;top:9px;left:50%;transform:translateX(-50%);font-family:var(--f-head);font-weight:500;font-size:11px;letter-spacing:.06em;opacity:.55}
+.slot .lbl{position:absolute;left:50%;transform:translateX(-50%);max-width:184px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  font-family:var(--f-head);font-weight:600;font-size:12px;letter-spacing:.1em;text-transform:uppercase;text-shadow:0 0 6px rgba(247,226,180,.25)}
+.slot:nth-child(even) .lbl{top:30px}
+.slot:nth-child(odd) .lbl{top:98px}
+.slot.playing .lbl{color:#fff;text-shadow:0 0 10px rgba(255,214,140,.8)}
+.scale{position:absolute;left:0;right:0;top:56px;height:34px;pointer-events:none;
+  background:
+    linear-gradient(var(--glass-ink),var(--glass-ink)) 0 50%/100% 1px no-repeat,
+    repeating-linear-gradient(90deg,rgba(247,226,180,.55) 0 1px,transparent 1px 13px) 0 9px/100% 16px no-repeat;opacity:.8}
+.slot .tick{position:absolute;left:50%;top:50px;width:2px;height:46px;margin-left:-1px;background:var(--glass-ink);opacity:.9}
+.slot .fav{position:absolute;left:50%;top:44px;width:6px;height:6px;margin-left:-3px;border-radius:50%;background:var(--amber);box-shadow:0 0 6px var(--amber)}
+.needle{position:absolute;z-index:2;left:50%;top:4px;bottom:4px;width:2px;margin-left:-1px;background:var(--needle);box-shadow:0 0 8px 1px rgba(255,74,61,.6);pointer-events:none}
+.needle::after{content:"";position:absolute;left:-4px;top:-2px;width:10px;height:6px;border-radius:2px;background:var(--needle)}
+.empty{position:absolute;inset:0;z-index:2;display:none;align-items:center;justify-content:center;text-align:center;padding:0 40px;font-family:var(--f-head);font-weight:600;letter-spacing:.12em;text-transform:uppercase;font-size:13px;color:var(--glass-ink);opacity:.8}
+.glass.is-empty .empty{display:flex}
+.glass.is-empty .needle,.glass.is-empty .dial{display:none}
+
+.readout{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 6px 2px}
+.freq{font-family:var(--f-head);font-weight:600;font-size:13px;letter-spacing:.16em;color:var(--muted);white-space:nowrap}
+.under{font-family:var(--f-head);font-weight:600;font-size:13px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:center;flex:1}
+.meter{display:flex;gap:3px;align-items:flex-end;height:14px}
+.meter i{width:4px;border-radius:1px;background:#33343a;transition:background .15s}
+.meter i:nth-child(1){height:4px}.meter i:nth-child(2){height:6px}.meter i:nth-child(3){height:8px}.meter i:nth-child(4){height:10px}.meter i:nth-child(5){height:12px}.meter i:nth-child(6){height:14px}
+.meter i.lit{background:var(--amber)}
+
+/* ---- now playing ---- */
+.now{background:var(--panel);border:1px solid var(--edge);border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:16px}
+.np{display:flex;gap:14px;align-items:center;min-height:92px}
+.cover{flex:none;width:92px;height:92px;border-radius:10px;overflow:hidden;background:var(--panel2);position:relative;box-shadow:0 6px 16px rgba(0,0,0,.35)}
+.cover img{width:100%;height:100%;object-fit:cover;display:block}
+.cover img.logo{object-fit:contain;padding:14px;background:#f4efe4}
+.mono{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:var(--f-head);font-weight:700;font-size:30px;letter-spacing:.06em;text-transform:uppercase;color:#141517}
+.info{min-width:0;flex:1;display:flex;flex-direction:column;gap:2px}
+.kicker{display:flex;align-items:center;gap:8px;font-family:var(--f-head);font-weight:600;font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:var(--muted)}
+.live{padding:1px 6px;border-radius:4px;border:1px solid currentColor;font-size:10px;letter-spacing:.16em}
+.on .live{color:var(--needle)}
+.station{font-family:var(--f-head);font-weight:700;font-size:24px;letter-spacing:.05em;text-transform:uppercase;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.track1{font-weight:600;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.track2{color:var(--muted);font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.status{color:var(--amber);font-size:13px;min-height:0}
+.status:empty{display:none}
+
+.controls{display:grid;grid-template-columns:44px 1fr auto 1fr 44px;align-items:center;gap:8px}
+.ic{width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:var(--muted);transition:color .2s,background .2s}
+.ic:hover{color:var(--ink);background:var(--panel2)}
+.ic svg{width:22px;height:22px}
+.ic.step{justify-self:center;width:52px;height:52px;color:var(--ink)}
+.ic.step svg{width:26px;height:26px}
+.ic.heart[aria-pressed="true"]{color:var(--needle)}
+.ic.heart[aria-pressed="true"] svg path{fill:currentColor}
+.power{width:72px;height:72px;border-radius:50%;background:radial-gradient(circle at 50% 35%,#ffcf6b,var(--amber) 55%,var(--amber-deep));color:#1a1206;display:flex;align-items:center;justify-content:center;
+  box-shadow:0 6px 0 #7a5410,0 10px 22px rgba(244,182,63,.25),inset 0 2px 0 rgba(255,255,255,.35);transition:transform .08s,box-shadow .08s}
+.power:active{transform:translateY(3px);box-shadow:0 3px 0 #7a5410,0 6px 14px rgba(244,182,63,.2),inset 0 2px 0 rgba(255,255,255,.35)}
+.power svg{width:30px;height:30px}
+.power .spin{display:none;width:30px;height:30px;border-radius:50%;border:3px solid rgba(26,18,6,.25);border-top-color:#1a1206;animation:spin .8s linear infinite}
+.power.loading .spin{display:block}.power.loading svg{display:none}
+@keyframes spin{to{transform:rotate(360deg)}}
+.sleep{position:relative;font-family:var(--f-head);font-weight:700;font-size:12px;letter-spacing:.08em}
+.sleep[data-min]:not([data-min="0"]){color:var(--amber)}
+.sleep small{position:absolute;bottom:2px;right:0;left:0;text-align:center;font-size:10px}
+
+/* ---- world search ---- */
+.world{display:none;flex-direction:column;gap:10px}
+.world.show{display:flex}
+.searchrow{display:grid;grid-template-columns:1fr 132px;gap:8px}
+.field{height:44px;border-radius:10px;border:1px solid var(--edge);background:var(--panel);color:var(--ink);font:inherit;font-size:16px;padding:0 12px;width:100%;min-width:0}
+.field::placeholder{color:var(--faint)}
+select.field{appearance:none;-webkit-appearance:none;padding-right:28px;background-image:linear-gradient(45deg,transparent 50%,var(--muted) 50%),linear-gradient(135deg,var(--muted) 50%,transparent 50%);
+  background-position:calc(100% - 16px) 19px,calc(100% - 11px) 19px;background-size:5px 5px;background-repeat:no-repeat;text-overflow:ellipsis}
+.chips{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;margin:0 -16px;padding:0 16px}
+.chips::-webkit-scrollbar{display:none}
+.chip{flex:none;height:32px;padding:0 12px;border-radius:16px;border:1px solid var(--edge);font-family:var(--f-head);font-weight:600;font-size:13px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.chip[aria-pressed="true"]{border-color:var(--amber);color:var(--amber)}
+
+/* ---- station list ---- */
+.listhead{display:flex;justify-content:space-between;align-items:baseline;padding:4px 2px 0}
+.listhead h2{margin:0;font-family:var(--f-head);font-weight:600;font-size:13px;letter-spacing:.22em;text-transform:uppercase;color:var(--muted)}
+.listhead span{font-size:13px;color:var(--faint)}
+.list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.row{display:flex;align-items:center;gap:12px;padding:8px 6px 8px 8px;border-radius:12px;background:var(--panel);border:1px solid transparent;transition:border-color .2s}
+.row.playing{border-color:var(--amber)}
+.row .pick{flex:1;min-width:0;display:flex;align-items:center;gap:12px;text-align:left}
+.thumb{flex:none;width:40px;height:40px;border-radius:8px;overflow:hidden;position:relative;background:var(--panel2)}
+.thumb img{width:100%;height:100%;object-fit:contain;background:#f4efe4;padding:4px;display:block}
+.thumb .mono{font-size:15px}
+.meta{min-width:0;display:flex;flex-direction:column}
+.meta b{font-weight:600;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.meta small{color:var(--muted);font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.row .eq{display:none;gap:2px;align-items:flex-end;height:14px;margin-left:auto;flex:none}
+.on .row.playing .eq{display:flex}
+.eq i{width:3px;background:var(--amber);animation:eq 1s ease-in-out infinite}
+.eq i:nth-child(2){animation-delay:-.35s}.eq i:nth-child(3){animation-delay:-.7s}
+@keyframes eq{0%,100%{height:4px}50%{height:14px}}
+.row .ic{width:40px;height:40px;flex:none}
+.row .ic svg{width:20px;height:20px}
+.note{color:var(--muted);font-size:14px;text-align:center;padding:18px 8px}
+
+.maker{display:flex;align-items:center;justify-content:center;gap:8px;padding-top:12px}
+.maker-logo{width:13px;height:14px;background:#4c4d52;-webkit-mask:url(icons/organik-mark.png) center/contain no-repeat;mask:url(icons/organik-mark.png) center/contain no-repeat}
+.maker-text{font-family:var(--f-head);font-weight:700;font-size:10px;letter-spacing:.3em;text-transform:uppercase;color:#4c4d52}
+
+.toast{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom) + 20px);transform:translate(-50%,20px);background:#f1ebdd;color:#141517;padding:10px 16px;border-radius:10px;font-size:14px;font-weight:500;
+  opacity:0;pointer-events:none;transition:opacity .25s,transform .25s;max-width:calc(100% - 32px);box-shadow:0 8px 24px rgba(0,0,0,.4);z-index:20}
+.toast.show{opacity:1;transform:translate(-50%,0)}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+@media (prefers-reduced-motion:reduce){*{transition-duration:.01ms!important;animation:none!important}}
+</style>
+</head>
+<body>
+<div class="app" id="app">
+  <header class="top">
+    <a class="brand" href="/" aria-label="Organik Lab home"><h1>Tuner</h1></a>
+    <div class="onair"><span class="lamp"></span><span id="onairText">Standby</span></div>
+  </header>
+
+  <nav class="bands" aria-label="Bands">
+    <button class="band" data-band="fip" aria-pressed="true">FIP</button>
+    <button class="band" data-band="scotland" aria-pressed="false">Scotland</button>
+    <button class="band" data-band="favs" aria-pressed="false">Faves</button>
+    <button class="band" data-band="world" aria-pressed="false">World</button>
+  </nav>
+
+  <section class="world" id="world" aria-label="Find stations">
+    <div class="searchrow">
+      <input class="field" id="q" type="search" placeholder="Search stations" autocomplete="off" enterkeyhint="search">
+      <select class="field" id="cc" aria-label="Country"><option value="">Anywhere</option></select>
+    </div>
+    <div class="chips" id="chips"></div>
+  </section>
+
+  <section class="dialwrap" aria-label="Tuning dial">
+    <div class="glass" id="glass">
+      <div class="dial" id="dial" tabindex="0" role="slider" aria-label="Tuning dial — drag or use arrow keys to change station" aria-valuemin="0" aria-valuemax="0" aria-valuenow="0">
+        <div class="track" id="track"></div>
+      </div>
+      <div class="needle"></div>
+      <div class="empty" id="dialEmpty"></div>
+    </div>
+    <div class="readout">
+      <span class="freq" id="freq">— MHz</span>
+      <span class="under" id="under"></span>
+      <span class="meter" id="meter" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></span>
+    </div>
+  </section>
+
+  <section class="now" aria-label="Now playing">
+    <div class="np">
+      <div class="cover" id="cover"></div>
+      <div class="info">
+        <div class="kicker"><span class="live">Live</span><span id="where"></span></div>
+        <div class="station" id="stationName">Pick a station</div>
+        <div class="track1" id="t1"></div>
+        <div class="track2" id="t2"></div>
+        <div class="status" id="status" role="status"></div>
+      </div>
+    </div>
+    <div class="controls">
+      <button class="ic heart" id="favBtn" aria-pressed="false" aria-label="Add to favourites">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M12 20s-7-4.4-9.2-9C1.4 8 3.2 4.5 6.6 4.5c2 0 3.4 1.1 5.4 3.2 2-2.1 3.4-3.2 5.4-3.2 3.4 0 5.2 3.5 3.8 6.5C19 15.6 12 20 12 20z"/></svg>
+      </button>
+      <button class="ic step" id="prevBtn" aria-label="Previous station">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 5h2v14H6zM20 5v14L9.5 12z"/></svg>
+      </button>
+      <button class="power" id="powerBtn" aria-label="Play">
+        <svg id="playIcon" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.5v13l11-6.5z"/></svg>
+        <span class="spin"></span>
+      </button>
+      <button class="ic step" id="nextBtn" aria-label="Next station">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M16 5h2v14h-2zM4 5v14l10.5-7z"/></svg>
+      </button>
+      <button class="ic sleep" id="sleepBtn" data-min="0" aria-label="Sleep timer off">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg>
+        <small id="sleepLeft"></small>
+      </button>
+    </div>
+  </section>
+
+  <section aria-label="Stations">
+    <div class="listhead"><h2 id="listTitle">FIP channels</h2><span id="listCount"></span></div>
+    <ul class="list" id="list"></ul>
+  </section>
+
+  <footer class="maker"><span class="maker-logo" aria-hidden="true"></span><span class="maker-text">An Organik Labs creation</span></footer>
+</div>
+
+<div class="toast" id="toast" role="alert"></div>
+<audio id="audio" preload="none" playsinline></audio>
+
+<script>
+(() => {
+'use strict';
+
+// ------------------------------------------------------------------ data
+const FIP = [
+  ['fip',              'fip',              'FIP',                    'The original eclectic mix',  '#e2007a'],
+  ['fipjazz',          'fip_jazz',         'FIP Jazz',               'Jazz, old and new',          '#3a7bd5'],
+  ['fipgroove',        'fip_groove',       'FIP Groove',             'Soul, funk, hip-hop roots',  '#ff8a00'],
+  ['fipworld',         'fip_world',        'FIP Monde',              'Music from everywhere',      '#00a88f'],
+  ['fipnouveautes',    'fip_nouveautes',   'Tout nouveau tout FIP',  'Fresh releases',             '#c4d600'],
+  ['fiprock',          'fip_rock',         'FIP Rock',               'Rock in all its forms',      '#e8352b'],
+  ['fipelectro',       'fip_electro',      'FIP Electro',            'Electronic, deep and light', '#8a4fff'],
+  ['fipreggae',        'fip_reggae',       'FIP Reggae',             'Reggae, dub, ska',           '#27b34b'],
+  ['fippop',           'fip_pop',          'FIP Pop',                'Pop, indie and beyond',      '#ff5fa2'],
+  ['fiphiphop',        'fip_hiphop',       'FIP Hip-Hop',            'Hip-hop and rap',            '#f2c200'],
+  ['fipmetal',         'fip_metal',        'FIP Metal',              'Heavy, loud, beautiful',     '#9aa0a6'],
+  ['fipsacrefrancais', 'fip_sacre_francais','FIP Sacré français',    'French songs, all eras',     '#2f5bd3'],
+].map(([slug, meta, name, tags, color]) => ({
+  id: 'fip:' + slug, name, tags, color, fip: meta, country: 'France', cc: 'FR',
+  urls: [
+    `https://icecast.radiofrance.fr/${slug}-hifi.aac?id=organiklab`,
+    `https://stream.radiofrance.fr/${slug}/${slug}.m3u8?id=organiklab`,
+    `https://icecast.radiofrance.fr/${slug}-midfi.mp3?id=organiklab`,
+  ],
+}));
+
+const TAGS = ['jazz','ambient','classical','folk','celtic','soul','blues','electronic','chillout','reggae','world','news'];
+const API = 'api.php';
+
+// ------------------------------------------------------------------ state
+const store = {
+  get(k, d) { try { const v = localStorage.getItem('tuner.' + k); return v ? JSON.parse(v) : d; } catch { return d; } },
+  set(k, v) { try { localStorage.setItem('tuner.' + k, JSON.stringify(v)); } catch {} },
+};
+let favs = store.get('favs', []);
+let band = store.get('band', 'fip');
+let bandStations = [];
+let current = store.get('last', null) || FIP[0];
+let wantOn = false;          // the user has switched the radio on
+let isPlaying = false;
+const failed = new Set();
+
+const $ = id => document.getElementById(id);
+const app = $('app'), dial = $('dial'), track = $('track'), glass = $('glass'), audio = $('audio');
+
+// ------------------------------------------------------------------ helpers
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const flag = cc => cc && cc.length === 2 ? String.fromCodePoint(...[...cc.toUpperCase()].map(c => 0x1F1A5 + c.charCodeAt(0))) : '';
+const regionName = (() => { try { const d = new Intl.DisplayNames(['en'], { type: 'region' }); return cc => { try { return d.of(cc); } catch { return cc; } }; } catch { return cc => cc; } })();
+const initials = name => (name.replace(/^the\s+/i, '').match(/[\p{L}\p{N}]+/gu) || [name]).slice(0, 2).map(w => w[0]).join('');
+const hue = s => { let h = 0; for (const c of s) h = (h * 31 + c.charCodeAt(0)) % 360; return h; };
+const tint = st => st.color || `hsl(${hue(st.name)} 55% 62%)`;
+const isFav = st => favs.some(f => f.id === st.id);
+const freqOf = i => (87.5 + i * 20.5 / Math.max(1, bandStations.length - 1)).toFixed(1);
+
+let toastT;
+function toast(msg) { const t = $('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), 2800); }
+
+function art(st, cls) {
+  const mono = `<span class="mono" style="background:${tint(st)}">${esc(st.fip ? 'fip' : initials(st.name))}</span>`;
+  if (st.favicon) return mono + `<img class="${cls || ''}" src="${esc(st.favicon)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">`;
+  return mono;
+}
+
+async function api(params) {
+  const r = await fetch(API + '?' + new URLSearchParams(params));
+  if (!r.ok) throw new Error('api ' + r.status);
+  return r.json();
+}
+
+// ------------------------------------------------------------------ static noise (the sound between stations)
+let ctx, noiseGain;
+function ensureCtx() {
+  if (ctx) { if (ctx.state === 'suspended') ctx.resume().catch(() => {}); return; }
+  const AC = window.AudioContext || window.webkitAudioContext;
+  if (!AC) return;
+  ctx = new AC();
+  const len = ctx.sampleRate * 2, buf = ctx.createBuffer(1, len, ctx.sampleRate), d = buf.getChannelData(0);
+  let last = 0;
+  for (let i = 0; i < len; i++) { const w = Math.random() * 2 - 1; last = last * 0.55 + w * 0.45; d[i] = last + (Math.random() < 0.0008 ? (Math.random() - 0.5) * 3 : 0); }
+  const src = ctx.createBufferSource(); src.buffer = buf; src.loop = true;
+  const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 1600; bp.Q.value = 0.5;
+  noiseGain = ctx.createGain(); noiseGain.gain.value = 0;
+  src.connect(bp).connect(noiseGain).connect(ctx.destination); src.start();
+}
+function staticTo(level, secs = 0.12) {
+  if (!ctx || !noiseGain) return;
+  const t = ctx.currentTime;
+  noiseGain.gain.cancelScheduledValues(t);
+  noiseGain.gain.setValueAtTime(noiseGain.gain.value, t);
+  noiseGain.gain.linearRampToValueAtTime(level, t + secs);
+}
+['pointerdown', 'touchend', 'keydown'].forEach(ev => addEventListener(ev, ensureCtx, { passive: true }));
+
+// ------------------------------------------------------------------ signal meter
+const bars = [...$('meter').children];
+let meterT;
+function meter(mode) {
+  clearInterval(meterT);
+  const set = n => bars.forEach((b, i) => b.classList.toggle('lit', i < n));
+  if (mode === 'off') return set(0);
+  if (mode === 'lock') { const n = 4 + Math.round(Math.random() * 2); set(n); meterT = setInterval(() => set(n - (Math.random() < 0.25 ? 1 : 0)), 700); return; }
+  meterT = setInterval(() => set(Math.floor(Math.random() * 4)), 90);   // searching
+}
+
+// ------------------------------------------------------------------ playback
+let gen = 0, hls = null, hlsLib = null, stallT;
+
+function candidates(st) {
+  if (st.urls) return st.urls;
+  const u = st.url || '';
+  return [u.replace(/^http:\/\//i, 'https://')];
+}
+
+function loadHls() {
+  if (hlsLib) return hlsLib;
+  hlsLib = new Promise((res, rej) => {
+    const s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/npm/hls.js@1/dist/hls.min.js';
+    s.onload = () => res(window.Hls); s.onerror = rej;
+    document.head.appendChild(s);
+  });
+  return hlsLib;
+}
+
+function stopAudio() {
+  clearTimeout(stallT);
+  if (hls) { hls.destroy(); hls = null; }
+  audio.removeAttribute('src'); audio.load();
+}
+
+async function tryUrl(url, my) {
+  const isHls = /\.m3u8(\?|$)/i.test(url);
+  if (isHls && !audio.canPlayType('application/vnd.apple.mpegurl')) {
+    const Hls = await loadHls();
+    if (my !== gen) return;
+    if (!Hls || !Hls.isSupported()) throw new Error('no hls');
+    hls = new Hls({ enableWorker: true, lowLatencyMode: false });
+    await new Promise((res, rej) => {
+      hls.on(Hls.Events.MANIFEST_PARSED, res);
+      hls.on(Hls.Events.ERROR, (_, d) => { if (d.fatal) rej(new Error('hls')); });
+      hls.loadSource(url); hls.attachMedia(audio);
+    });
+  } else {
+    audio.src = url;
+  }
+  if (my !== gen) return;
+  await new Promise((res, rej) => {
+    const done = ok => { clearTimeout(stallT); audio.removeEventListener('playing', onOk); audio.removeEventListener('error', onErr); ok ? res() : rej(new Error('stream')); };
+    const onOk = () => done(true), onErr = () => done(false);
+    audio.addEventListener('playing', onOk); audio.addEventListener('error', onErr);
+    stallT = setTimeout(() => done(false), 12000);
+    audio.play().catch(err => { if (err && err.name === 'NotAllowedError') { clearTimeout(stallT); rej(err); } });
+  });
+}
+
+async function play(st) {
+  const my = ++gen;
+  wantOn = true; setLoading(true); setStatus('Tuning in…');
+  stopAudio();
+  ensureCtx(); staticTo(0.035, 0.2); meter('search');
+  const urls = candidates(st);
+  for (const url of urls) {
+    if (my !== gen) return;
+    try {
+      if (hls) { hls.destroy(); hls = null; }
+      await tryUrl(url, my);
+      if (my !== gen) return;
+      failed.delete(st.id);
+      staticTo(0, 0.6); meter('lock'); setLoading(false); setStatus('');
+      setOn(true);
+      api({ a: 'click', id: st.id }).catch(() => {});
+      return;
+    } catch (err) {
+      if (my !== gen) return;
+      if (err && err.name === 'NotAllowedError') { setLoading(false); staticTo(0); meter('off'); setOn(false); setStatus('Tap play to start'); return; }
+    }
+  }
+  if (my !== gen) return;
+  failed.add(st.id); renderList(); markDial();
+  stopAudio(); staticTo(0, 0.4); meter('off'); setLoading(false); setOn(false);
+  const insecure = /^http:\/\//i.test(st.url || '');
+  setStatus(insecure ? 'This station only broadcasts on an insecure link, which browsers block.' : "Can't reach this station right now — try another.");
+}
+
+function pause() {
+  gen++; wantOn = false;
+  stopAudio(); staticTo(0); meter('off'); setLoading(false); setOn(false); setStatus('');
+}
+
+audio.addEventListener('pause', () => { if (wantOn && !audio.ended && audio.src && isPlaying) { /* paused by the OS (lock screen etc.) */ wantOn = false; gen++; meter('off'); setOn(false); } });
+audio.addEventListener('playing', () => { if (wantOn) setOn(true); });
+audio.addEventListener('waiting', () => { if (isPlaying) setStatus('Buffering…'); });
+audio.addEventListener('timeupdate', () => { if (isPlaying && $('status').textContent === 'Buffering…') setStatus(''); });
+
+function setOn(on) {
+  isPlaying = on;
+  app.classList.toggle('on', on);
+  $('onairText').textContent = on ? 'On air' : 'Standby';
+  $('playIcon').innerHTML = on ? '<path d="M7 5h3.5v14H7zM13.5 5H17v14h-3.5z"/>' : '<path d="M8 5.5v13l11-6.5z"/>';
+  $('powerBtn').setAttribute('aria-label', on ? 'Pause' : 'Play');
+  if ('mediaSession' in navigator) navigator.mediaSession.playbackState = on ? 'playing' : 'paused';
+  renderList(); markDial();
+  if (on) pollNow(true); else clearTimeout(pollT);
+}
+function setLoading(on) { $('powerBtn').classList.toggle('loading', on); }
+function setStatus(s) { $('status').textContent = s; }
+
+// ------------------------------------------------------------------ now playing
+let pollT, nowFor = null, lastNow = {};
+async function pollNow(fresh) {
+  clearTimeout(pollT);
+  const st = current;
+  if (fresh) { lastNow = {}; nowFor = st.id; }
+  if (!isPlaying) return;
+  let wait = 45;
+  try {
+    let r = null;
+    if (st.fip) r = await api({ a: 'fip', ch: st.fip });
+    else if (!st.hls && !String(st.id).startsWith('fip:')) r = await api({ a: 'icy', id: st.id });
+    if (st !== current) return;
+    if (r) { lastNow = r; wait = r.refresh || 30; }
+  } catch {}
+  showNow();
+  if (!st.fip && !lastNow.title) wait = 60;
+  pollT = setTimeout(() => pollNow(false), wait * 1000);
+}
+
+function showNow() {
+  const st = current, n = (nowFor === st.id) ? lastNow : {};
+  $('stationName').textContent = st.name;
+  $('where').textContent = [flag(st.cc), st.state && st.state !== st.country ? st.state : st.country].filter(Boolean).join(' ');
+  const l1 = n.title || '', l2 = n.artist || (l1 ? '' : (st.tags || ''));
+  $('t1').textContent = l1; $('t2').textContent = l2 + (n.album && l2 ? ' · ' + n.album : '');
+  const cv = $('cover');
+  if (n.cover) cv.innerHTML = `<span class="mono" style="background:${tint(st)}">fip</span><img src="${esc(n.cover)}" alt="" referrerpolicy="no-referrer" onerror="this.remove()">`;
+  else cv.innerHTML = art(st, 'logo');
+  const fb = $('favBtn'); fb.setAttribute('aria-pressed', isFav(st)); fb.setAttribute('aria-label', isFav(st) ? 'Remove from favourites' : 'Add to favourites');
+  document.title = (isPlaying ? '▶ ' : '') + st.name + ' · Tuner';
+  if ('mediaSession' in navigator) {
+    const artwork = n.cover ? [{ src: n.cover, sizes: '512x512' }] : st.favicon ? [{ src: st.favicon, sizes: '256x256' }] : [{ src: 'icons/icon-512.png', sizes: '512x512', type: 'image/png' }];
+    try { navigator.mediaSession.metadata = new MediaMetadata({ title: n.title || st.name, artist: n.artist || (n.title ? st.name : 'Live radio'), album: n.title ? st.name : 'Tuner', artwork }); } catch {}
+  }
+}
+
+// ------------------------------------------------------------------ the dial
+let mode = null, settleT, slotW = 104, lastUnder = -1;
+
+function buildDial() {
+  const list = bandStations;
+  glass.classList.toggle('is-empty', !list.length);
+  if (!list.length) {
+    $('dialEmpty').textContent = band === 'favs' ? 'No favourites yet — tap the heart on any station' : band === 'world' ? 'Nothing found — try another search' : 'Warming up the valves…';
+    $('under').textContent = ''; $('freq').textContent = '— MHz';
+    return;
+  }
+  track.innerHTML = '<div class="spacer"></div>' + list.map((st, i) =>
+    `<div class="slot" data-i="${i}">${i % 2 ? '' : `<span class="num">${Math.round(freqOf(i))}</span>`}<span class="tick"></span>${isFav(st) && band !== 'favs' ? '<span class="fav"></span>' : ''}<span class="lbl">${esc(st.name)}</span></div>`
+  ).join('') + '<div class="spacer"></div>';
+  track.insertAdjacentHTML('beforeend', '<div class="scale"></div>');
+  sizeDial();
+  dial.setAttribute('aria-valuemax', list.length - 1);
+  markDial();
+}
+function sizeDial() {
+  slotW = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--slot')) || 104;
+  const pad = Math.max(0, (dial.clientWidth - slotW) / 2);
+  track.querySelectorAll('.spacer').forEach(s => s.style.width = pad + 'px');
+  track.style.width = (pad * 2 + bandStations.length * slotW) + 'px';
+}
+function markDial() {
+  track.querySelectorAll('.slot').forEach(s => s.classList.toggle('playing', bandStations[+s.dataset.i]?.id === current.id && isPlaying));
+}
+const idxAtNeedle = () => Math.max(0, Math.min(bandStations.length - 1, Math.round(dial.scrollLeft / slotW)));
+function moveNeedle(i, how) {   // how: 'silent' | 'tune'
+  mode = how;
+  dial.scrollTo({ left: i * slotW, behavior: how === 'silent' ? 'instant' : 'smooth' });
+  updateUnder();
+  clearTimeout(settleT); settleT = setTimeout(settle, how === 'silent' ? 60 : 700);
+}
+function updateUnder() {
+  if (!bandStations.length) return;
+  const i = idxAtNeedle(), st = bandStations[i];
+  dial.setAttribute('aria-valuenow', i); dial.setAttribute('aria-valuetext', st.name);
+  if (i === lastUnder && $('under').dataset.id === st.id) return;
+  lastUnder = i; $('under').dataset.id = st.id;
+  $('freq').textContent = freqOf(i) + ' MHz';
+  $('under').textContent = st.name;
+}
+dial.addEventListener('scroll', () => {
+  updateUnder();
+  if (mode === 'silent') { clearTimeout(settleT); settleT = setTimeout(settle, 120); return; }
+  if (mode === 'user' || mode === 'tune') {
+    if (wantOn) { staticTo(0.07 + Math.random() * 0.03, 0.05); meter('search'); audio.volume = 0.25; }
+    clearTimeout(settleT); settleT = setTimeout(settle, 180);
+  }
+}, { passive: true });
+if ('onscrollend' in window) dial.addEventListener('scrollend', () => { clearTimeout(settleT); settleT = setTimeout(settle, 30); });
+['pointerdown', 'touchstart', 'wheel'].forEach(ev => dial.addEventListener(ev, () => { mode = 'user'; ensureCtx(); }, { passive: true }));
+dial.addEventListener('keydown', e => {
+  const k = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[e.key];
+  if (k) { e.preventDefault(); step(k); }
+  if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); togglePower(); }
+});
+
+function settle() {
+  const m = mode; mode = null;
+  audio.volume = 1;
+  if ((m !== 'user' && m !== 'tune') || !bandStations.length) return;
+  const st = bandStations[idxAtNeedle()];
+  if (st.id === current.id) { if (wantOn) { staticTo(0, 0.4); meter(isPlaying ? 'lock' : 'search'); if (!isPlaying && !$('powerBtn').classList.contains('loading')) play(st); } updateUnder(); return; }
+  select(st);
+}
+
+function select(st) {
+  current = st; store.set('last', st);
+  nowFor = null; lastNow = {};
+  showNow(); renderList(); markDial(); updateUnder();
+  if (wantOn) play(st);
+}
+
+function step(dir) {
+  if (!bandStations.length) return;
+  let i = bandStations.findIndex(s => s.id === current.id);
+  i = i < 0 ? (dir > 0 ? 0 : bandStations.length - 1) : (i + dir + bandStations.length) % bandStations.length;
+  moveNeedle(i, 'tune');
+}
+
+function togglePower() {
+  ensureCtx();
+  if (wantOn) pause(); else play(current);
+}
+
+// ------------------------------------------------------------------ station list
+function renderList() {
+  const ul = $('list');
+  const titles = { fip: 'FIP channels', scotland: 'Scottish stations', favs: 'Your favourites', world: worldTitle };
+  $('listTitle').textContent = typeof titles[band] === 'function' ? titles[band]() : titles[band];
+  $('listCount').textContent = bandStations.length ? bandStations.length + ' stations' : '';
+  if (!bandStations.length) { ul.innerHTML = `<li class="note">${band === 'favs' ? 'Tap the heart on any station to keep it here.' : loadingBand ? 'Loading stations…' : 'No stations here yet.'}</li>`; return; }
+  ul.innerHTML = bandStations.map((st, i) => {
+    const sub = [st.cc && band !== 'scotland' && band !== 'fip' ? flag(st.cc) : '', failed.has(st.id) ? 'off air' : (st.tags || st.state || st.country)].filter(Boolean).join(' ');
+    return `<li class="row ${st.id === current.id ? 'playing' : ''}">
+      <button class="pick" data-i="${i}"><span class="thumb">${art(st)}</span><span class="meta"><b>${esc(st.name)}</b><small>${esc(sub)}</small></span><span class="eq"><i></i><i></i><i></i></span></button>
+      <button class="ic heart" data-fav="${i}" aria-pressed="${isFav(st)}" aria-label="${isFav(st) ? 'Remove' : 'Add'} ${esc(st.name)} ${isFav(st) ? 'from' : 'to'} favourites"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M12 20s-7-4.4-9.2-9C1.4 8 3.2 4.5 6.6 4.5c2 0 3.4 1.1 5.4 3.2 2-2.1 3.4-3.2 5.4-3.2 3.4 0 5.2 3.5 3.8 6.5C19 15.6 12 20 12 20z"/></svg></button>
+    </li>`;
+  }).join('');
+}
+$('list').addEventListener('click', e => {
+  const pick = e.target.closest('[data-i]'), fav = e.target.closest('[data-fav]');
+  if (fav) return toggleFav(bandStations[+fav.dataset.fav]);
+  if (!pick) return;
+  ensureCtx();
+  const i = +pick.dataset.i, st = bandStations[i];
+  if (st.id === current.id) { if (!wantOn) play(st); return; }
+  wantOn = true;
+  moveNeedle(i, 'tune');
+});
+
+function toggleFav(st) {
+  if (!st) return;
+  if (isFav(st)) { favs = favs.filter(f => f.id !== st.id); toast('Removed from favourites'); }
+  else { favs.push(st); toast('Saved to favourites'); }
+  store.set('favs', favs);
+  if (band === 'favs') { bandStations = favs.slice(); buildDial(); const i = bandStations.findIndex(s => s.id === current.id); if (i >= 0) moveNeedle(i, 'silent'); }
+  else { const i = idxAtNeedle(); buildDial(); moveNeedle(i, 'silent'); }
+  renderList(); showNow();
+}
+$('favBtn').addEventListener('click', () => toggleFav(current));
+
+// ------------------------------------------------------------------ bands
+let loadingBand = false, bandReq = 0, worldTitle = () => 'Stations';
+const cache = {};
+
+async function setBand(b) {
+  band = b; store.set('band', b);
+  document.querySelectorAll('.band').forEach(k => k.setAttribute('aria-pressed', k.dataset.band === b));
+  $('world').classList.toggle('show', b === 'world');
+  const my = ++bandReq;
+  if (b === 'fip') bandStations = FIP;
+  else if (b === 'favs') bandStations = favs.slice();
+  else if (b === 'scotland') {
+    if (!cache.scotland) {
+      bandStations = []; loadingBand = true; buildDial(); renderList();
+      try { cache.scotland = (await api({ a: 'band', name: 'scotland' })).stations; } catch { cache.scotland = null; }
+      loadingBand = false;
+      if (my !== bandReq) return;
+      if (!cache.scotland) toast("Couldn't load the station list — check your connection");
+    }
+    bandStations = cache.scotland || [];
+  } else if (b === 'world') { initWorld(); return; }
+  buildDial(); renderList(); placeNeedleSilently();
+}
+function placeNeedleSilently() {
+  const i = bandStations.findIndex(s => s.id === current.id);
+  requestAnimationFrame(() => { moveNeedle(Math.max(0, i), 'silent'); lastUnder = -1; updateUnder(); });
+}
+document.querySelector('.bands').addEventListener('click', e => { const k = e.target.closest('.band'); if (k && k.dataset.band !== band) setBand(k.dataset.band); });
+
+// ------------------------------------------------------------------ world search
+let worldReady = false, searchT;
+const wq = store.get('world', { q: '', cc: '', tag: '' });
+if (!wq.cc && !wq.q && !wq.tag) { const m = (navigator.language || '').match(/-([A-Z]{2})$/i); wq.cc = m ? m[1].toUpperCase() : 'PT'; }
+
+function initWorld() {
+  if (!worldReady) {
+    worldReady = true;
+    $('q').value = wq.q;
+    $('chips').innerHTML = TAGS.map(t => `<button class="chip" data-tag="${t}" aria-pressed="${wq.tag === t}">${t}</button>`).join('');
+    const sel = $('cc');
+    if (wq.cc) sel.insertAdjacentHTML('beforeend', `<option value="${wq.cc}">${flag(wq.cc)} ${esc(regionName(wq.cc))}</option>`), sel.value = wq.cc;
+    api({ a: 'countries' }).then(r => {
+      const keep = sel.value;
+      sel.innerHTML = '<option value="">Anywhere</option>' + r.countries
+        .map(c => ({ ...c, label: regionName(c.code) || c.name }))
+        .sort((x, y) => x.label.localeCompare(y.label))
+        .map(c => `<option value="${c.code}">${flag(c.code)} ${esc(c.label)}</option>`).join('');
+      sel.value = keep;
+    }).catch(() => {});
+  }
+  runSearch();
+}
+async function runSearch() {
+  const my = ++bandReq;
+  store.set('world', wq);
+  worldTitle = () => {
+    const bits = [wq.tag && wq.tag[0].toUpperCase() + wq.tag.slice(1), wq.q && `“${wq.q}”`].filter(Boolean).join(' · ');
+    const where = wq.cc ? regionName(wq.cc) : 'the world';
+    return (bits ? bits + ' in ' : 'Popular in ') + where;
+  };
+  if (!wq.q && !wq.cc && !wq.tag) { bandStations = []; loadingBand = false; buildDial(); renderList(); return; }
+  loadingBand = true; bandStations = []; buildDial(); renderList();
+  let r = null;
+  try { r = await api({ a: 'search', q: wq.q, cc: wq.cc, tag: wq.tag }); } catch {}
+  if (my !== bandReq || band !== 'world') return;
+  loadingBand = false;
+  bandStations = r ? r.stations : [];
+  if (!r) toast("Couldn't search right now — check your connection");
+  buildDial(); renderList(); placeNeedleSilently();
+}
+$('q').addEventListener('input', e => { wq.q = e.target.value.trim(); clearTimeout(searchT); searchT = setTimeout(runSearch, 450); });
+$('q').addEventListener('keydown', e => { if (e.key === 'Enter') { e.target.blur(); clearTimeout(searchT); runSearch(); } });
+$('cc').addEventListener('change', e => { wq.cc = e.target.value; runSearch(); });
+$('chips').addEventListener('click', e => {
+  const c = e.target.closest('.chip'); if (!c) return;
+  wq.tag = wq.tag === c.dataset.tag ? '' : c.dataset.tag;
+  document.querySelectorAll('.chip').forEach(x => x.setAttribute('aria-pressed', x.dataset.tag === wq.tag));
+  runSearch();
+});
+
+// ------------------------------------------------------------------ sleep timer
+const SLEEP = [0, 15, 30, 60, 90];
+let sleepAt = 0, sleepT;
+$('sleepBtn').addEventListener('click', () => {
+  const b = $('sleepBtn'), cur = +b.dataset.min, next = SLEEP[(SLEEP.indexOf(cur) + 1) % SLEEP.length];
+  b.dataset.min = next;
+  sleepAt = next ? Date.now() + next * 60000 : 0;
+  b.setAttribute('aria-label', next ? `Sleep timer: ${next} minutes` : 'Sleep timer off');
+  toast(next ? `Switching off in ${next} minutes` : 'Sleep timer off');
+  tickSleep();
+});
+function tickSleep() {
+  clearTimeout(sleepT);
+  const left = sleepAt ? Math.ceil((sleepAt - Date.now()) / 60000) : 0;
+  $('sleepLeft').textContent = sleepAt ? left + '' : '';
+  if (!sleepAt) return;
+  if (Date.now() >= sleepAt) {
+    sleepAt = 0; $('sleepBtn').dataset.min = 0; $('sleepLeft').textContent = '';
+    let v = 1; const f = setInterval(() => { v -= 0.05; audio.volume = Math.max(0, v); if (v <= 0) { clearInterval(f); pause(); audio.volume = 1; } }, 150);
+    return;
+  }
+  sleepT = setTimeout(tickSleep, 15000);
+}
+
+// ------------------------------------------------------------------ controls & media keys
+$('powerBtn').addEventListener('click', togglePower);
+$('prevBtn').addEventListener('click', () => { ensureCtx(); step(-1); });
+$('nextBtn').addEventListener('click', () => { ensureCtx(); step(1); });
+if ('mediaSession' in navigator) {
+  const ms = navigator.mediaSession, h = (a, f) => { try { ms.setActionHandler(a, f); } catch {} };
+  h('play', () => play(current)); h('pause', pause); h('stop', pause);
+  h('previoustrack', () => step(-1)); h('nexttrack', () => step(1));
+}
+addEventListener('resize', () => { const i = idxAtNeedle(); sizeDial(); moveNeedle(i, 'silent'); });
+
+// ------------------------------------------------------------------ go
+showNow();
+setBand(['fip', 'scotland', 'favs', 'world'].includes(band) ? band : 'fip');
+})();
+</script>
+</body>
+</html>

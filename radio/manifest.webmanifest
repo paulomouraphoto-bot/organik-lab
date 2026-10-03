@@ -1,0 +1,17 @@
+{
+  "name": "Tuner",
+  "short_name": "Tuner",
+  "description": "A world radio tuner: all of FIP's channels, Scottish stations and thousands more, on a dial you turn.",
+  "id": "/radio/",
+  "start_url": "/radio/",
+  "scope": "/radio/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#141517",
+  "theme_color": "#141517",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
