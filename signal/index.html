@@ -121,6 +121,26 @@ button,input{font:inherit;color:inherit}
 .field input::placeholder{color:#66655f}
 .note{font-size:13px;color:var(--muted);line-height:1.5;margin:0}
 
+/* place switcher */
+.placebar{display:flex;gap:4px;padding:4px;background:var(--housing);border:1px solid var(--panel-edge);border-radius:10px;align-items:stretch}
+.place-select{flex:1 1 auto;min-width:0;appearance:none;-webkit-appearance:none;background:var(--flap) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5l5 5 5-5' fill='none' stroke='%238c8a84' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") right 12px center/12px no-repeat;
+  border:0;border-radius:7px;padding:8px 34px 8px 12px;cursor:pointer;
+  font-family:var(--f-flap);font-weight:600;font-size:15px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink);text-overflow:ellipsis}
+.pbtn{flex:none;background:transparent;border:0;border-radius:7px;padding:7px 12px;cursor:pointer;
+  font-family:var(--f-flap);font-weight:600;font-size:14px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.pbtn:hover{color:var(--ink);background:#25262a}
+
+/* sync panel */
+.sync{display:flex;flex-direction:column;gap:10px;border-top:1px solid var(--panel-edge);padding-top:14px}
+.sync-row{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;
+  font-family:var(--f-flap);letter-spacing:.14em;text-transform:uppercase;font-size:15px;color:var(--muted)}
+.sync-row b{color:var(--ink);font-weight:600;letter-spacing:.1em;font-variant-numeric:tabular-nums;user-select:all}
+.sync-state{font-size:13px;letter-spacing:.12em}
+.sync-state.ok{color:var(--teal)}
+.sync-state.wait{color:var(--amber)}
+.btn.small{font-size:14px;padding:10px 8px;letter-spacing:.1em;border-radius:10px}
+.e-age{color:#66655f}
+
 /* log */
 .log{display:flex;flex-direction:column;gap:6px}
 .log-head{display:flex;justify-content:space-between;align-items:center;gap:12px;border-top:1px solid var(--panel-edge);padding-top:14px;
@@ -153,6 +173,12 @@ button,input{font:inherit;color:inherit}
 </head>
 <body>
 <main class="device">
+  <div class="placebar">
+    <select class="place-select" id="place" aria-label="Place"></select>
+    <button class="pbtn" id="renamePlace">Rename</button>
+    <button class="pbtn" id="newPlace" aria-label="New place">+ New</button>
+  </div>
+
   <section class="board">
     <div class="word" id="word" aria-live="polite"></div>
     <div class="flaps" id="flaps" role="img" aria-label="Signal score">
@@ -189,8 +215,18 @@ button,input{font:inherit;color:inherit}
   </div>
 
   <section class="log">
-    <div class="log-head"><span>Readings <b id="count">0</b></span><button class="linkbtn" id="clear">Clear all</button></div>
+    <div class="log-head"><span>Readings here <b id="count">0</b></span><button class="linkbtn" id="clear">Delete place</button></div>
     <div id="list"></div>
+  </section>
+
+  <section class="sync" aria-label="Saving">
+    <div class="sync-row"><span>Map code <b id="code">—</b></span><span class="sync-state" id="syncState"></span></div>
+    <div class="row">
+      <button class="btn small" id="copyCode">Copy code</button>
+      <button class="btn small" id="useCode">Use a code</button>
+      <button class="btn small" id="export">Export</button>
+    </div>
+    <p class="note">Your places and readings are saved to the Organik server under this code, so they come back even if this browser forgets them. Anyone with the code can see and add to your maps, so only share it with people you trust. Enter it on another phone with Use a code.</p>
   </section>
 
   <footer class="maker">
@@ -208,15 +244,39 @@ button,input{font:inherit;color:inherit}
   const $ = s => document.querySelector(s);
   const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
   const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+  const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 
+  /* ---------- state: a local copy for speed and offline use, the server copy is the one that lasts ---------- */
   const state = {
+    code: store.get('sig-code', null),
+    places: store.get('sig-places', []),
     readings: store.get('sig-readings', []),
-    pos: null,          // {lat, lon, acc}
-    heading: null,      // degrees clockwise from north
+    pending: Object.assign({ add: [], del: [], places: [], delPlaces: [] }, store.get('sig-pending', {})),
+    placeId: store.get('sig-place', null),
+    placeChosen: false,   // true once the person picks a place by hand; stops GPS from switching it
+    pos: null,
+    heading: null,
     compass: false,
     auto: false,
     busy: false,
+    syncing: false,
+    syncOk: null,
   };
+  const save = () => {
+    store.set('sig-code', state.code); store.set('sig-places', state.places); store.set('sig-readings', state.readings);
+    store.set('sig-pending', state.pending); store.set('sig-place', state.placeId);
+  };
+  const place = () => state.places.find(p => p.id === state.placeId) || null;
+  const here = () => state.readings.filter(r => r.place === state.placeId);
+
+  /* ---------- map codes ---------- */
+  const WORDS = ('FIG OTTER PLUM HERON CEDAR MAPLE RAVEN OLIVE LEMON TIGER CORAL AMBER BISON CLOVE DAISY EAGLE FERN GECKO HAZEL IRIS JADE KOALA LILAC MANGO NUTMEG ORCA PEACH QUAIL ROBIN SAGE TULIP VIOLA WALNUT YARROW ZEBRA ACORN BIRCH CAMEL DOVE ELM FINCH GINGER HONEY IVY JUNIPER KIWI LARK MOSS NEWT OAK PANDA QUINCE REED SWAN THYME URCHIN VOLE WREN YAK ALDER BADGER CARROT DUNE EMBER FALCON GROVE HOLLY INDIGO JASPER KELP LOTUS MEADOW NECTAR OPAL PEBBLE RIVER SALMON TIDE UMBER VELVET WILLOW APRICOT BASIL COMET DELTA ECHO FROST GARNET HARBOR ISLAND JUNE KESTREL LAGOON MARBLE NOVA ORBIT PINE RAIN SPRUCE TOPAZ VALLEY WAVE CLOUD STORM SUNNY CANYON SHELL').split(' ');
+  function newCode(){
+    const r = new Uint32Array(4); crypto.getRandomValues(r);
+    return [0, 1, 2].map(i => WORDS[r[i] % WORDS.length]).join('-') + '-' + String(r[3] % 1000).padStart(3, '0');
+  }
+  const normCode = c => c.toUpperCase().replace(/[^A-Z0-9]+/g, '-').replace(/^-|-$/g, '');
+  const codeOk = c => /^[A-Z]{2,10}-[A-Z]{2,10}-[A-Z]{2,10}-\d{3}$/.test(c);
 
   /* ---------- split-flap ---------- */
   const makeFlap = el => {
@@ -255,7 +315,6 @@ button,input{font:inherit;color:inherit}
   }
 
   /* ---------- scoring ---------- */
-  // speed carries most weight, ping and dropped pings pull it down; 0 = no connection at all
   function score(r){
     if (r.dead) return 0;
     const sp = Math.max(0, Math.min(1, Math.log10(1 + r.mbps * 4) / Math.log10(1 + 50 * 4)));   // ~50 Mbps tops out
@@ -266,9 +325,17 @@ button,input{font:inherit;color:inherit}
   const colorOf = s => s >= 60 ? css('--teal') : s >= 30 ? css('--amber') : css('--red');
   const wordOf = s => s === 0 ? 'Dead zone' : s >= 80 ? 'Excellent' : s >= 60 ? 'Good' : s >= 30 ? 'Usable' : 'Weak';
   const fmtMbps = m => m >= 10 ? m.toFixed(0) : m >= 1 ? m.toFixed(1) : m.toFixed(2);
+  // a reading is a snapshot: older ones fade so today's picture stands out
+  const ageDays = r => (Date.now() - r.t) / 864e5;
+  const fadeOf = r => { const d = ageDays(r); return d < 1 ? 1 : d < 7 ? 0.7 : d < 30 ? 0.5 : 0.35; };
+  const dayLabel = t => {
+    const d = new Date(t), now = new Date();
+    if (d.toDateString() === now.toDateString()) return 'today';
+    if (new Date(now - 864e5).toDateString() === d.toDateString()) return 'yesterday';
+    return d.toLocaleDateString([], { day: 'numeric', month: 'short', year: d.getFullYear() === now.getFullYear() ? undefined : 'numeric' });
+  };
 
   /* ---------- measuring ---------- */
-  const bust = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
   async function timedFetch(url, ms){
     const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), ms);
     try { return await fetch(url, { cache: 'no-store', signal: ctl.signal }); }
@@ -278,7 +345,7 @@ button,input{font:inherit;color:inherit}
     const pings = []; let lost = 0;
     for (let i = 0; i < 5; i++) {
       const t0 = performance.now();
-      try { const r = await timedFetch('probe-ping.txt?' + bust(), 3000); await r.text(); if (!r.ok) throw 0; pings.push(performance.now() - t0); }
+      try { const r = await timedFetch('probe-ping.txt?' + uid(), 3000); await r.text(); if (!r.ok) throw 0; pings.push(performance.now() - t0); }
       catch { lost++; }
     }
     if (!pings.length) return { dead: true, ms: null, mbps: 0, loss: 1 };
@@ -288,7 +355,7 @@ button,input{font:inherit;color:inherit}
     let bytes = 0, mbps = 0;
     const ctl = new AbortController(), stopAt = setTimeout(() => ctl.abort(), 6000);
     try {
-      const res = await fetch('probe-1mb.bin?' + bust(), { cache: 'no-store', signal: ctl.signal });
+      const res = await fetch('probe-1mb.bin?' + uid(), { cache: 'no-store', signal: ctl.signal });
       const t0 = performance.now();
       const reader = res.body.getReader();
       try { for (;;) { const { done, value } = await reader.read(); if (done) break; bytes += value.length; } }
@@ -297,7 +364,7 @@ button,input{font:inherit;color:inherit}
       mbps = bytes * 8 / secs / 1e6;
     } catch { mbps = 0; }
     clearTimeout(stopAt);
-    return { dead: false, ms: Math.round(ms), mbps, loss: lost / 5, kb: Math.round(bytes / 1024) };
+    return { dead: false, ms: Math.round(ms), mbps, loss: lost / 5 };
   }
 
   async function takeReading(){
@@ -309,27 +376,137 @@ button,input{font:inherit;color:inherit}
     const r = await measure();
     const conn = navigator.connection;
     const reading = {
-      id: bust(), t: Date.now(),
-      label: $('#spot').value.trim(),
+      id: uid(), t: Date.now(),
+      label: $('#spot').value.trim().slice(0, 60),
       lat: state.pos ? state.pos.lat : null, lon: state.pos ? state.pos.lon : null, acc: state.pos ? Math.round(state.pos.acc) : null,
       ms: r.ms, mbps: +r.mbps.toFixed(2), loss: r.loss, dead: r.dead,
       net: conn && conn.type ? conn.type : null,
     };
     reading.score = Math.round(score(reading));
+    let p = place();
+    if (!p) p = createPlace(null, reading);
+    reading.place = p.id;
+    if (p.lat == null && reading.lat != null) { p.lat = reading.lat; p.lon = reading.lon; queuePlace(p); }
     state.readings.unshift(reading);
-    store.set('sig-readings', state.readings);
+    state.pending.add.push(reading);
+    save();
     $('#spot').value = '';
     showReading(reading);
-    renderList(); drawRadar();
+    renderAll();
     btn.disabled = false; btn.textContent = 'Take reading';
     state.busy = false;
     if (navigator.vibrate) navigator.vibrate(20);
+    sync();
   }
   function showReading(r){
+    if (!r) { document.body.dataset.q = ''; showScore(null); renderWord(place() ? place().name.slice(0, 12) : 'Signal'); $('#mbps').textContent = $('#ping').textContent = '—'; return; }
     document.body.dataset.q = quality(r.score);
     showScore(r.score); renderWord(wordOf(r.score));
     $('#mbps').textContent = r.dead ? '0' : fmtMbps(r.mbps) + ' Mbps';
     $('#ping').textContent = r.dead ? 'none' : r.ms + ' ms';
+  }
+
+  /* ---------- places ---------- */
+  const NEAR = 400; // metres: closer than this to a place's centre counts as being there
+  function createPlace(name, reading){
+    const n = state.places.length + 1;
+    const p = { id: uid(), name: name || `Place ${n}`, lat: reading && reading.lat != null ? reading.lat : state.pos ? state.pos.lat : null,
+      lon: reading && reading.lon != null ? reading.lon : state.pos ? state.pos.lon : null, t: Date.now() };
+    state.places.push(p); state.placeId = p.id;
+    queuePlace(p); save(); renderPlaces();
+    if (!name) $('#hint').textContent = `Saved as "${p.name}". Tap Rename to give this place a proper name.`;
+    return p;
+  }
+  function queuePlace(p){
+    state.pending.places = state.pending.places.filter(x => x.id !== p.id).concat([Object.assign({}, p)]);
+    save();
+  }
+  function nearestPlace(pos){
+    let best = null, bd = Infinity;
+    state.places.forEach(p => { if (p.lat == null) return; const d = offset(pos, p).d; if (d < bd) { bd = d; best = p; } });
+    return best && bd <= NEAR ? best : null;
+  }
+  function choosePlaceFromGps(){
+    if (state.placeChosen || !state.pos) return;
+    const p = nearestPlace(state.pos);
+    if (p && p.id !== state.placeId) {
+      state.placeId = p.id; save(); renderAll(); showReading(here()[0]);
+      const n = here().length;
+      if (n) $('#hint').textContent = `Welcome back to ${p.name}. ${n} earlier reading${n > 1 ? 's are' : ' is'} on the radar, older ones faded.`;
+    } else if (!p && place() && place().lat != null && offset(state.pos, place()).d > NEAR * 2) {
+      // far from every saved place: the next reading starts a new one
+      state.placeId = null; save(); renderAll(); showReading(null);
+    }
+  }
+  function renderPlaces(){
+    const sel = $('#place');
+    const opts = state.places.slice().sort((a, b) => a.name.localeCompare(b.name)).map(p => {
+      const n = state.readings.filter(r => r.place === p.id).length;
+      return `<option value="${p.id}"${p.id === state.placeId ? ' selected' : ''}>${esc(p.name)} · ${n}</option>`;
+    });
+    if (!place()) opts.unshift(`<option value="" selected>New place</option>`);
+    sel.innerHTML = opts.join('');
+    $('#renamePlace').hidden = !place();
+    $('#clear').hidden = !place();
+  }
+
+  /* ---------- server sync ---------- */
+  const pendingCount = () => state.pending.add.length + state.pending.del.length + state.pending.places.length + state.pending.delPlaces.length;
+  async function sync(){
+    if (!state.code || state.syncing) return;
+    state.syncing = true; renderSync();
+    const sent = JSON.parse(JSON.stringify(state.pending));
+    try {
+      // nothing to send: just fetch the latest (a new code gets no server file until it has readings)
+      const res = pendingCount()
+        ? await fetch('api.php?a=sync', { method: 'POST', headers: { 'Content-Type': 'application/json' }, cache: 'no-store',
+            body: JSON.stringify(Object.assign({ code: state.code }, sent)) })
+        : await fetch('api.php?a=load&code=' + encodeURIComponent(state.code), { cache: 'no-store' });
+      if (!res.ok) throw new Error(res.status);
+      const d = await res.json();
+      // drop what the server now has; anything added while we waited stays queued
+      const sentIds = k => new Set(sent[k].map(x => typeof x === 'string' ? x : x.id));
+      const sa = sentIds('add'), sd = sentIds('del'), sp = sentIds('places'), sdp = sentIds('delPlaces');
+      state.pending.add = state.pending.add.filter(x => !sa.has(x.id));
+      state.pending.del = state.pending.del.filter(x => !sd.has(x));
+      state.pending.places = state.pending.places.filter(x => !sp.has(x.id));
+      state.pending.delPlaces = state.pending.delPlaces.filter(x => !sdp.has(x));
+      merge(d);
+      state.syncOk = true;
+    } catch {
+      state.syncOk = false;
+    }
+    state.syncing = false;
+    save(); renderAll();
+    if (state.syncOk && pendingCount()) setTimeout(sync, 500);
+  }
+  // the server copy plus anything still waiting to go up
+  function merge(d){
+    // server came back empty but this phone has readings: it lost its copy, so send ours up again
+    if (!(d.readings || []).length && !(d.places || []).length && state.places.length) {
+      state.pending.places = state.places.map(p => Object.assign({}, p));
+      state.pending.add = state.readings.slice();
+      return;
+    }
+    const delR = new Set(state.pending.del), delP = new Set(state.pending.delPlaces);
+    const R = new Map((d.readings || []).map(r => [r.id, r]));
+    state.pending.add.forEach(r => R.set(r.id, r));
+    const P = new Map((d.places || []).map(p => [p.id, p]));
+    state.pending.places.forEach(p => P.set(p.id, p));
+    state.places = [...P.values()].filter(p => !delP.has(p.id));
+    const live = new Set(state.places.map(p => p.id));
+    state.readings = [...R.values()].filter(r => !delR.has(r.id) && live.has(r.place)).sort((a, b) => b.t - a.t);
+    if (state.placeId && !live.has(state.placeId)) state.placeId = null;
+  }
+  function renderSync(){
+    $('#code').textContent = state.code || '—';
+    const el = $('#syncState'), n = pendingCount();
+    el.className = 'sync-state';
+    if (state.syncing) el.textContent = 'Saving…';
+    else if (state.syncOk === false) { el.textContent = n ? `Offline · ${n} waiting` : 'Offline'; el.classList.add('wait'); }
+    else if (n) { el.textContent = `${n} waiting`; el.classList.add('wait'); }
+    else if (state.syncOk) { el.textContent = 'Saved ✓'; el.classList.add('ok'); }
+    else el.textContent = '';
   }
 
   /* ---------- location and compass ---------- */
@@ -337,8 +514,10 @@ button,input{font:inherit;color:inherit}
   function startGps(){
     if (gpsWatch !== null || !navigator.geolocation) return;
     gpsWatch = navigator.geolocation.watchPosition(p => {
+      const first = !state.pos;
       state.pos = { lat: p.coords.latitude, lon: p.coords.longitude, acc: p.coords.accuracy };
       $('#gps').textContent = '±' + Math.round(p.coords.accuracy) + ' m';
+      if (first || p.coords.accuracy < 150) choosePlaceFromGps();
       drawRadar();
     }, err => {
       $('#gps').textContent = 'off';
@@ -375,15 +554,15 @@ button,input{font:inherit;color:inherit}
   }
   const DIRS = ['north','north-east','east','south-east','south','south-west','west','north-west'];
   const dirOf = (x, y) => DIRS[Math.round(((Math.atan2(x, y) * 180 / Math.PI) + 360) % 360 / 45) % 8];
-  const located = () => state.readings.filter(r => r.lat !== null);
+  const located = () => here().filter(r => r.lat != null);
   function centre(){
-    if (state.pos) return state.pos;
-    const L = located(); if (!L.length) return null;
+    const L = located();
+    // use where you stand if you're at this place; otherwise centre on the place's readings
+    if (state.pos && (!L.length || L.some(r => offset(state.pos, r).d < NEAR))) return state.pos;
+    if (!L.length) return null;
     return { lat: L.reduce((s, r) => s + r.lat, 0) / L.length, lon: L.reduce((s, r) => s + r.lon, 0) / L.length };
   }
-  function bestReading(){
-    return state.readings.reduce((b, r) => (!b || r.score > b.score) ? r : b, null);
-  }
+  const bestReading = () => here().reduce((b, r) => (!b || r.score > b.score || (r.score === b.score && r.t > b.t)) ? r : b, null);
 
   /* ---------- radar ---------- */
   const cv = $('#radar'), g = cv.getContext('2d');
@@ -399,73 +578,69 @@ button,input{font:inherit;color:inherit}
     const c = W / 2, R = c - 18;
     g.clearRect(0, 0, W, W);
     const rot = state.compass && state.heading !== null ? -state.heading * Math.PI / 180 : 0;
-    const ctr = centre();
-    const L = located();
+    const ctr = centre(), L = located(), you = !!(state.pos && ctr === state.pos);
     let maxD = 0;
     if (ctr) L.forEach(r => { maxD = Math.max(maxD, offset(ctr, r).d); });
     const range = NICE.find(n => n >= maxD * 1.15) || NICE[NICE.length - 1];
     $('#scale').textContent = ctr && L.length ? `Edge ${range} m` : '';
 
-    // rings and cross
     g.lineWidth = 1;
     for (let i = 1; i <= 4; i++) { g.strokeStyle = i === 4 ? '#34353a' : '#26272a'; g.beginPath(); g.arc(c, c, R * i / 4, 0, Math.PI * 2); g.stroke(); }
     g.save(); g.translate(c, c); g.rotate(rot);
     g.strokeStyle = '#26272a'; g.beginPath(); g.moveTo(-R, 0); g.lineTo(R, 0); g.moveTo(0, -R); g.lineTo(0, R); g.stroke();
-    // compass letters
-    g.fillStyle = css('--muted'); g.font = '600 13px "Barlow Condensed", sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.font = '600 13px "Barlow Condensed", sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
     [['N', 0], ['E', 90], ['S', 180], ['W', 270]].forEach(([t, a]) => {
       const ang = a * Math.PI / 180; g.save(); g.translate(Math.sin(ang) * (R + 10), -Math.cos(ang) * (R + 10)); g.rotate(-rot);
       g.fillStyle = t === 'N' ? css('--amber') : css('--muted'); g.fillText(t, 0, 0); g.restore();
     });
     g.restore();
 
-    // sweep
-    if (!reduceMotion) {
-      const grad = g.createConicGradient ? g.createConicGradient(sweep - Math.PI / 2 - 0.9, c, c) : null;
-      if (grad) {
-        grad.addColorStop(0, 'rgba(98,199,168,0)'); grad.addColorStop(0.14, 'rgba(98,199,168,.16)'); grad.addColorStop(0.1401, 'rgba(98,199,168,0)'); grad.addColorStop(1, 'rgba(98,199,168,0)');
-        g.fillStyle = grad; g.beginPath(); g.arc(c, c, R, 0, Math.PI * 2); g.fill();
-      }
+    if (!reduceMotion && g.createConicGradient) {
+      const grad = g.createConicGradient(sweep - Math.PI / 2 - 0.9, c, c);
+      grad.addColorStop(0, 'rgba(98,199,168,0)'); grad.addColorStop(0.14, 'rgba(98,199,168,.16)'); grad.addColorStop(0.1401, 'rgba(98,199,168,0)'); grad.addColorStop(1, 'rgba(98,199,168,0)');
+      g.fillStyle = grad; g.beginPath(); g.arc(c, c, R, 0, Math.PI * 2); g.fill();
     }
 
-    // readings
     const best = bestReading();
     if (ctr) {
       const pts = L.map(r => { const o = offset(ctr, r); return { r, x: o.x / range * R, y: -o.y / range * R }; });
       g.save(); g.translate(c, c); g.rotate(rot);
-      // path to the best spot
       const bp = pts.find(p => p.r === best);
-      if (bp && Math.hypot(bp.x, bp.y) > 6) {
+      if (bp && you && Math.hypot(bp.x, bp.y) > 6) {
         g.setLineDash([4, 5]); g.strokeStyle = css('--teal'); g.lineWidth = 1.5;
         g.beginPath(); g.moveTo(0, 0); g.lineTo(bp.x, bp.y); g.stroke(); g.setLineDash([]);
       }
-      pts.slice().reverse().forEach(p => {
-        const col = colorOf(p.r.score), rr = p.r === best ? 9 : 6.5;
-        g.fillStyle = col; g.globalAlpha = .18; g.beginPath(); g.arc(p.x, p.y, rr * 2.2, 0, Math.PI * 2); g.fill();
-        g.globalAlpha = 1; g.beginPath(); g.arc(p.x, p.y, rr, 0, Math.PI * 2); g.fill();
+      // oldest first so today's readings sit on top
+      pts.slice().sort((a, b) => a.r.t - b.r.t).forEach(p => {
+        const col = colorOf(p.r.score), rr = p.r === best ? 9 : 6.5, fade = fadeOf(p.r);
+        g.fillStyle = col; g.globalAlpha = .18 * fade; g.beginPath(); g.arc(p.x, p.y, rr * 2.2, 0, Math.PI * 2); g.fill();
+        g.globalAlpha = fade; g.beginPath(); g.arc(p.x, p.y, rr, 0, Math.PI * 2); g.fill();
+        g.globalAlpha = 1;
         if (p.r === best) { g.strokeStyle = '#141517'; g.lineWidth = 2; g.stroke(); }
       });
       g.restore();
     }
-    // you, in the middle; arrow shows which way the phone points when the compass is on
-    g.fillStyle = css('--ink');
-    g.beginPath(); g.arc(c, c, 5, 0, Math.PI * 2); g.fill();
-    if (state.compass && state.heading !== null) { g.beginPath(); g.moveTo(c, c - 16); g.lineTo(c - 6, c - 6); g.lineTo(c + 6, c - 6); g.closePath(); g.fill(); }
-    updateBest(ctr, best);
+    if (you || !ctr) {
+      g.fillStyle = css('--ink');
+      g.beginPath(); g.arc(c, c, 5, 0, Math.PI * 2); g.fill();
+      if (state.compass && state.heading !== null) { g.beginPath(); g.moveTo(c, c - 16); g.lineTo(c - 6, c - 6); g.lineTo(c + 6, c - 6); g.closePath(); g.fill(); }
+    }
+    updateBest(best, you);
   }
-  function updateBest(ctr, best){
+  function updateBest(best, you){
     const el = $('#best');
-    if (!best) { el.textContent = 'Take a few readings around you'; return; }
+    if (!best) { el.textContent = place() ? 'No readings here yet' : 'Take a few readings around you'; return; }
     const name = best.label || (best.mbps ? fmtMbps(best.mbps) + ' Mbps spot' : 'best spot');
-    if (state.readings.length < 2) { el.innerHTML = 'Move a few steps and take another'; return; }
-    if (ctr && best.lat !== null && state.pos) {
+    const when = dayLabel(best.t) === 'today' ? '' : ` · ${dayLabel(best.t)}`;
+    if (here().length < 2) { el.innerHTML = 'Move a few steps and take another'; return; }
+    if (you && best.lat != null) {
       const o = offset(state.pos, best);
       const acc = Math.max(state.pos.acc || 0, best.acc || 0);
-      if (o.d < Math.max(4, acc * 0.6)) { el.innerHTML = `Best: <b>${esc(name)}</b> · right about here`; return; }
-      el.innerHTML = `Best: <b>${esc(name)}</b> · ${Math.round(o.d)} m ${dirOf(o.x, o.y)}`;
-    } else el.innerHTML = `Best so far: <b>${esc(name)}</b> · score ${best.score}`;
+      if (o.d < Math.max(4, acc * 0.6)) { el.innerHTML = `Best: <b>${esc(name)}</b> · right about here${when}`; return; }
+      el.innerHTML = `Best: <b>${esc(name)}</b> · ${Math.round(o.d)} m ${dirOf(o.x, o.y)}${when}`;
+    } else el.innerHTML = `Best: <b>${esc(name)}</b> · score ${best.score}${when}`;
   }
-  const esc = s => s.replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
+  const esc = s => String(s).replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
   function tick(){
     sweep = (sweep + 0.035) % (Math.PI * 2);
     if (!document.hidden) drawRadar();
@@ -474,15 +649,17 @@ button,input{font:inherit;color:inherit}
 
   /* ---------- log ---------- */
   function renderList(){
-    const list = $('#list'), best = bestReading();
-    $('#count').textContent = state.readings.length;
-    if (!state.readings.length) { list.innerHTML = '<div class="empty">No readings yet.</div>'; return; }
-    const sorted = state.readings.slice().sort((a, b) => b.score - a.score);
+    const list = $('#list'), best = bestReading(), rs = here();
+    $('#count').textContent = rs.length;
+    if (!rs.length) { list.innerHTML = '<div class="empty">No readings here yet.</div>'; return; }
+    const sorted = rs.slice().sort((a, b) => b.score - a.score || b.t - a.t);
     list.innerHTML = sorted.map(r => {
-      const time = new Date(r.t).toLocaleString([], { weekday: 'short', hour: '2-digit', minute: '2-digit' });
+      const d = new Date(r.t), day = dayLabel(r.t);
+      const time = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      const when = day === 'today' ? time : `<span class="e-age">${day}</span>, ${time}`;
       const name = r.label || (r.acc != null ? `Spot · ±${r.acc} m` : 'Spot · no GPS');
-      const meta = r.dead ? `No connection · ${time}` : `${fmtMbps(r.mbps)} Mbps · ${r.ms} ms${r.loss ? ` · ${Math.round(r.loss * 100)}% lost` : ''}${r.net ? ' · ' + r.net : ''} · ${time}`;
-      return `<div class="entry${r === best && sorted.length > 1 ? ' top1' : ''}">
+      const meta = r.dead ? `No connection · ${when}` : `${fmtMbps(r.mbps)} Mbps · ${r.ms} ms${r.loss ? ` · ${Math.round(r.loss * 100)}% lost` : ''}${r.net ? ' · ' + esc(r.net) : ''} · ${when}`;
+      return `<div class="entry${r === best && sorted.length > 1 ? ' top1' : ''}" style="opacity:${Math.max(0.55, fadeOf(r))}">
         <span class="chip" style="background:${colorOf(r.score)}">${r.score}</span>
         <span style="min-width:0"><div class="e-name">${esc(name)}</div><div class="e-meta">${meta}</div></span>
         <button class="e-del" data-id="${r.id}" aria-label="Delete this reading">×</button></div>`;
@@ -490,9 +667,14 @@ button,input{font:inherit;color:inherit}
   }
   $('#list').addEventListener('click', e => {
     const b = e.target.closest('.e-del'); if (!b) return;
-    state.readings = state.readings.filter(r => r.id !== b.dataset.id);
-    store.set('sig-readings', state.readings); renderList(); drawRadar();
+    const id = b.dataset.id;
+    state.readings = state.readings.filter(r => r.id !== id);
+    if (state.pending.add.some(r => r.id === id)) state.pending.add = state.pending.add.filter(r => r.id !== id);
+    else state.pending.del.push(id);
+    save(); renderAll(); sync();
   });
+
+  function renderAll(){ renderPlaces(); renderList(); renderSync(); drawRadar(); }
 
   /* ---------- controls ---------- */
   function syncButtons(){
@@ -513,28 +695,105 @@ button,input{font:inherit;color:inherit}
   };
   $('#compass').onclick = toggleCompass;
   $('#spot').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); takeReading(); } });
-  $('#clear').onclick = () => {
-    if (!state.readings.length || !confirm('Clear all readings?')) return;
-    state.readings = []; store.set('sig-readings', []); renderList(); drawRadar();
-    showScore(null); renderWord('Signal'); document.body.dataset.q = '';
-    $('#mbps').textContent = $('#ping').textContent = '—';
+
+  $('#place').onchange = e => {
+    state.placeId = e.target.value || null; state.placeChosen = true;
+    save(); renderAll(); showReading(here()[0]);
   };
-  document.addEventListener('visibilitychange', () => { if (document.hidden && state.auto) { state.auto = false; clearTimeout(autoTimer); syncButtons(); } });
+  $('#newPlace').onclick = () => {
+    const name = (prompt('Name the new place', '') || '').trim();
+    if (!name) return;
+    state.placeChosen = true;
+    createPlace(name.slice(0, 40), null);
+    renderAll(); showReading(null);
+  };
+  $('#renamePlace').onclick = () => {
+    const p = place(); if (!p) return;
+    const name = (prompt('Rename this place', p.name) || '').trim();
+    if (!name || name === p.name) return;
+    p.name = name.slice(0, 40); queuePlace(p); save(); renderAll(); showReading(here()[0]); sync();
+  };
+  $('#clear').onclick = () => {
+    const p = place(); if (!p) return;
+    if (!confirm(`Delete "${p.name}" and its ${here().length} readings? This removes them from the server too.`)) return;
+    state.readings = state.readings.filter(r => r.place !== p.id);
+    state.pending.add = state.pending.add.filter(r => r.place !== p.id);
+    state.pending.places = state.pending.places.filter(x => x.id !== p.id);
+    state.places = state.places.filter(x => x.id !== p.id);
+    state.pending.delPlaces.push(p.id);
+    state.placeId = null; state.placeChosen = false;
+    save(); renderAll(); showReading(null); sync();
+  };
+
+  $('#copyCode').onclick = async () => {
+    try { await navigator.clipboard.writeText(state.code); $('#copyCode').textContent = 'Copied'; }
+    catch { prompt('Your map code', state.code); }
+    setTimeout(() => { $('#copyCode').textContent = 'Copy code'; }, 1600);
+  };
+  $('#useCode').onclick = async () => {
+    const raw = prompt('Enter a map code (like FIG-OTTER-PLUM-274)', '');
+    if (!raw) return;
+    const code = normCode(raw);
+    if (!codeOk(code)) { alert('That doesn\'t look like a map code. It\'s three words and three numbers, like FIG-OTTER-PLUM-274.'); return; }
+    if (code === state.code) return;
+    let d;
+    try { const res = await fetch('api.php?a=load&code=' + encodeURIComponent(code), { cache: 'no-store' }); if (!res.ok) throw 0; d = await res.json(); }
+    catch { alert('Couldn\'t reach the server to check that code. Try again with a connection.'); return; }
+    const mine = state.readings.length;
+    if (!d.readings.length && !confirm('There are no readings under that code yet. Switch to it anyway?')) return;
+    // bring along anything taken on this phone, so nothing is lost when switching
+    const carry = mine && confirm(`Add the ${mine} reading${mine > 1 ? 's' : ''} on this phone to that map as well?`);
+    state.pending = carry
+      ? { add: state.readings.slice(), del: [], places: state.places.slice(), delPlaces: [] }
+      : { add: [], del: [], places: [], delPlaces: [] };
+    state.code = code; state.readings = []; state.places = []; state.placeId = null; state.placeChosen = false;
+    merge(d); save(); renderAll(); showReading(null);
+    if (state.pos) choosePlaceFromGps();
+    sync();
+  };
+  $('#export').onclick = () => {
+    const data = { app: 'Signal Mapper', exported: new Date().toISOString(), code: state.code, places: state.places, readings: state.readings };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob); a.download = `signal-readings-${new Date().toISOString().slice(0, 10)}.json`;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+  };
+
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden && state.auto) { state.auto = false; clearTimeout(autoTimer); syncButtons(); }
+    if (!document.hidden) sync();
+  });
+  addEventListener('online', sync);
   addEventListener('resize', () => { sizeRadar(); drawRadar(); });
 
   const conn = navigator.connection;
   const showNet = () => { if (conn && conn.type) { $('#netWrap').hidden = false; $('#net').textContent = conn.type; } };
   showNet(); if (conn && conn.addEventListener) conn.addEventListener('change', showNet);
 
-  // start
-  sizeRadar(); renderList();
-  if (state.readings.length) showReading(state.readings[0]); else { showScore(null); renderWord('Signal'); }
+  /* ---------- start ---------- */
+  if (!state.code) state.code = newCode();
+  // readings from before places existed: gather them into a first place and send them up
+  const loose = state.readings.filter(r => !r.place);
+  if (loose.length) {
+    const L = loose.filter(r => r.lat != null);
+    const seed = L.length ? { lat: L.reduce((s, r) => s + r.lat, 0) / L.length, lon: L.reduce((s, r) => s + r.lon, 0) / L.length } : null;
+    const p = { id: uid(), name: 'My place', lat: seed ? seed.lat : null, lon: seed ? seed.lon : null, t: Date.now() };
+    state.places.push(p); queuePlace(p);
+    loose.forEach(r => { r.place = p.id; if (!r.id || !/^[a-z0-9]{6,32}$/.test(r.id)) r.id = uid(); state.pending.add.push(r); });
+    state.placeId = p.id;
+  }
+  if (!place() && state.places.length) state.placeId = state.places[0].id;
+  save();
+  sizeRadar(); renderAll(); syncButtons();
+  showReading(here()[0]);
   if (navigator.permissions && navigator.permissions.query) {
     navigator.permissions.query({ name: 'geolocation' }).then(p => { if (p.state === 'granted') startGps(); }).catch(() => {});
   }
+  sync();
   requestAnimationFrame(tick);
 
-  window.__signal = { score, offset, dirOf, state, drawRadar, renderList };
+  window.__signal = { score, offset, dirOf, state, drawRadar, sync, merge, takeReading, newCode };
 })();
 </script>
 </body>

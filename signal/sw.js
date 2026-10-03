@@ -1,5 +1,5 @@
 // Offline shell for Signal Mapper. Speed-test probes always go straight to the network.
-const CACHE = 'signal-mapper-v1';
+const CACHE = 'signal-mapper-v2';
 const CORE = ['./', './manifest.webmanifest', './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png', './icons/organik-mark.png'];
 
 self.addEventListener('install', e => {
@@ -10,7 +10,7 @@ self.addEventListener('activate', e => {
 });
 self.addEventListener('fetch', e => {
   const req = e.request;
-  if (req.method !== 'GET' || req.url.includes('/probe-')) return; // never cache or intercept the tests
+  if (req.method !== 'GET' || req.url.includes('/probe-') || req.url.includes('api.php')) return; // tests and saved maps always go live
   if (req.mode === 'navigate') {
     e.respondWith(fetch(req).then(res => { const copy = res.clone(); caches.open(CACHE).then(c => c.put('./', copy)); return res; }).catch(() => caches.match('./')));
     return;
