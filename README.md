@@ -6,4 +6,4 @@ Each project lives in its own folder and is served at `/<folder>/`.
 
 - `pomodoro/` - Split-Flap Pomodoro timer
 
-Live at https://organik-lab.netlify.app
+Live at https://lab.organikreations.com (deployed by GitHub Actions to the Organik cPanel server)
