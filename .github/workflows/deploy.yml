@@ -33,3 +33,5 @@ jobs:
             .github/**
             README.md
             netlify.toml
+            tools/**
+            lab-index.plain.html

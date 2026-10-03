@@ -3,90 +3,80 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Organik Lab</title>
+<meta name="robots" content="noindex,nofollow">
+<title>Organik Labs</title>
 <meta name="theme-color" content="#141517">
+<link rel="icon" type="image/png" href="/pomodoro/icons/favicon-32.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600&family=Barlow:wght@400;500&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;500&display=swap">
 <style>
-:root{
-  color-scheme:dark;
-  --bg:#141517;--panel:#1c1d20;--edge:#2a2b2f;--ink:#f1ebdd;--muted:#8c8a84;--amber:#f4b63f;
-  --f-head:"Barlow Condensed","Arial Narrow",Arial,sans-serif;
-  --f-body:"Barlow","Helvetica Neue",Arial,sans-serif;
-}
+:root{color-scheme:dark;--housing:#141517;--panel:#1c1d20;--edge:#2a2b2f;--flap-hi:#323337;--flap-lo:#232427;--ink:#f1ebdd;--muted:#8c8a84;--amber:#f4b63f;
+  --f-flap:"Barlow Condensed","Arial Narrow",Arial,sans-serif;--f-ui:"Barlow","Helvetica Neue",Arial,sans-serif}
 *{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:16px;line-height:1.5;padding:48px 16px}
-main{max-width:640px;margin:0 auto;display:flex;flex-direction:column;gap:32px}
-h1{font-family:var(--f-head);font-weight:600;font-size:clamp(40px,9vw,64px);letter-spacing:.06em;text-transform:uppercase;margin:0;line-height:1}
-h1 span{color:var(--amber)}
-.lede{color:var(--muted);margin:8px 0 0}
-ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
-a.item{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:18px 20px;background:var(--panel);border:1px solid var(--edge);border-radius:12px;color:inherit;text-decoration:none;transition:border-color .2s}
-a.item:hover,a.item:focus-visible{border-color:var(--amber);outline:none}
-.name{font-family:var(--f-head);font-weight:600;font-size:22px;letter-spacing:.08em;text-transform:uppercase}
-.desc{color:var(--muted);font-size:14px}
-.arrow{color:var(--amber);font-family:var(--f-head);font-size:22px}
-footer{color:var(--muted);font-size:13px;border-top:1px solid var(--edge);padding-top:16px}
+html{height:100%}
+body{margin:0;min-height:100%;display:grid;place-items:center;background:var(--housing);color:var(--ink);font-family:var(--f-ui);
+  padding:max(24px,env(safe-area-inset-top)) 16px max(24px,env(safe-area-inset-bottom));-webkit-font-smoothing:antialiased}
+form{width:100%;max-width:380px;background:linear-gradient(180deg,#202124,var(--panel));border:1px solid var(--edge);border-radius:22px;
+  padding:34px 26px 26px;display:flex;flex-direction:column;gap:16px;text-align:center;
+  box-shadow:0 30px 60px -20px rgba(0,0,0,.7),inset 0 1px 0 rgba(255,255,255,.05)}
+.board{display:flex;flex-direction:column;align-items:center;gap:6px}
+.row{display:flex;gap:4px}
+.t{position:relative;width:30px;height:44px;border-radius:5px;background:linear-gradient(180deg,var(--flap-hi) 0 50%,var(--flap-lo) 50% 100%);
+  box-shadow:0 3px 6px rgba(0,0,0,.45);display:grid;place-items:center;font-family:var(--f-flap);font-weight:700;font-size:30px;line-height:1;color:var(--ink);
+  animation:flip .5s ease both}
+.t::after{content:"";position:absolute;left:0;right:0;top:50%;height:1px;background:rgba(0,0,0,.55)}
+.row.b .t{color:var(--amber)}
+@keyframes flip{0%{transform:rotateX(90deg)}60%{transform:rotateX(-12deg)}100%{transform:none}}
+p{margin:0;color:var(--muted);font-size:15px}
+.lbl{font-family:var(--f-flap);font-weight:600;font-size:12px;letter-spacing:.28em;text-transform:uppercase;color:var(--muted);margin-top:4px}
+input[type=password]{font:inherit;font-size:18px;letter-spacing:.2em;padding:13px 14px;border-radius:10px;border:1px solid #2f3034;background:var(--housing);color:var(--ink);text-align:center;width:100%}
+input:focus-visible,button:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+button{font-family:var(--f-flap);font-weight:700;font-size:17px;letter-spacing:.2em;text-transform:uppercase;padding:14px;border:0;border-radius:10px;background:var(--amber);color:#141517;cursor:pointer}
+button:disabled{opacity:.6}
+label.rem{font-size:14px;color:var(--muted);display:flex;gap:8px;justify-content:center;align-items:center}
+label.rem input{accent-color:var(--amber)}
+.err{color:#e0805f;font-size:14px;min-height:1.2em}
+.maker{display:flex;flex-direction:column;align-items:center;gap:6px;padding-top:6px}
+.maker-mark{filter:drop-shadow(0 -1px 0 rgba(0,0,0,.85)) drop-shadow(0 1.5px 0 rgba(255,255,255,.16)) drop-shadow(0 0 1px rgba(0,0,0,.5))}
+.maker-logo{display:block;width:34px;height:38px;background:linear-gradient(180deg,#4a4b50,#3a3b40);
+  -webkit-mask:url(/tuner/icons/organik-mark.png) center/contain no-repeat;mask:url(/tuner/icons/organik-mark.png) center/contain no-repeat}
+.maker-text{font-family:var(--f-flap);font-weight:700;font-size:11px;letter-spacing:.32em;text-transform:uppercase;color:#4c4d52;text-shadow:0 -1px 0 rgba(0,0,0,.85),0 1.5px 0 rgba(255,255,255,.14)}
+@media (prefers-reduced-motion:reduce){.t{animation:none}}
 </style>
 </head>
 <body>
-<main>
-  <header>
-    <h1>Organik <span>Lab</span></h1>
-    <p class="lede">Small tools and experiments by Organik Creations.</p>
-  </header>
-  <ul>
-    <li>
-      <a class="item" href="/pomodoro/">
-        <span><span class="name">Split-Flap Pomodoro</span><br><span class="desc">Focus timer with a rotary dial and an airport-board countdown.</span></span>
-        <span class="arrow" aria-hidden="true">→</span>
-      </a>
-    </li>
-    <li>
-      <a class="item" href="/stinky-aliens/">
-        <span><span class="name">Elliot vs the Stinky Aliens</span><br><span class="desc">Pixel-art garden defence: soap bubbles, stinky aliens and Liam's Giggle Shockwave.</span></span>
-        <span class="arrow" aria-hidden="true">→</span>
-      </a>
-    </li>
-    <li>
-      <a class="item" href="/news/">
-        <span><span class="name">Daily Deck</span><br><span class="desc">Calm, swipeable news cards that learn your taste — with a Bright side and a Green-only deck.</span></span>
-        <span class="arrow" aria-hidden="true">→</span>
-      </a>
-    </li>
-    <li>
-      <a class="item" href="/radio/">
-        <span><span class="name">Tuner</span><br><span class="desc">World radio on a dial you turn: every FIP channel, Scottish stations and thousands more.</span></span>
-        <span class="arrow" aria-hidden="true">→</span>
-      </a>
-    </li>
-    <li>
-      <a class="item" href="/tuner/">
-        <span><span class="name">Split-Flap Tuner</span><br><span class="desc">Guitar, ukulele and viola tuner with a needle meter, reference tones and the common alternate tunings.</span></span>
-        <span class="arrow" aria-hidden="true">→</span>
-      </a>
-    </li>
-    <li>
-      <a class="item" href="/signal/">
-        <span><span class="name">Signal Mapper</span><br><span class="desc">Walk around taking readings and a radar shows where your connection is strongest.</span></span>
-        <span class="arrow" aria-hidden="true">→</span>
-      </a>
-    </li>
-    <li>
-      <a class="item" href="/quote-jar/">
-        <span><span class="name">Quote Jar</span><br><span class="desc">Catch the funny things the boys say in two taps, with voice notes and photos, and print each year as a little book.</span></span>
-        <span class="arrow" aria-hidden="true">→</span>
-      </a>
-    </li>
-    <li>
-      <a class="item" href="/colorado-2027/">
-        <span><span class="name">Colorado 2027</span><br><span class="desc">Private planning hub · password required.</span></span>
-        <span class="arrow" aria-hidden="true">→</span>
-      </a>
-    </li>
-  </ul>
-  <footer>Organik Creations</footer>
-</main>
+<form id="f" autocomplete="off">
+  <div class="board" aria-label="Organik Labs" id="board"></div>
+  <p>A private workshop. Enter the password to come in.</p>
+  <div class="lbl">Password</div>
+  <input type="password" id="pw" aria-label="Password" autofocus>
+  <label class="rem"><input type="checkbox" id="rem" checked> Remember on this device</label>
+  <button type="submit" id="go">Enter the lab</button>
+  <div class="err" id="err" role="alert"></div>
+  <footer class="maker"><span class="maker-mark" aria-hidden="true"><span class="maker-logo"></span></span><span class="maker-text">An Organik Labs creation</span></footer>
+</form>
+<script>
+const P={"salt": "1hqnM8NzMqw9ZrTzO6GPwQ==", "iv": "erhoAPOa2slL026q", "iter": 250000, "ct": "jK9y6FZU5xT/Ykt3RFhh4PmG9FXGHZrvi5HVj6CAHix6b7j3nYlGVx21ZHuizaYLtu079bk9Wtw9CtQTh/XsQKxgXxGBNJ9bc3xBxXB6HD/2UyGVFS+T1gxax0jw5YQure2zRigD4E+g6qUXMFpkP+0ED6IPrhOpl0TMuj0v81Y1LSN+Lyz5UWixQgzrV3oIekmtiBgPNLJqYD+ri9O6JKnxo+r7lvvMMma31rQef3YSSTErmBUpReQBPWfmt1IXY5Hp9Btuj2bXT9MFJN4QwCiiZREH+RyeKArBxCFo2UglKN6Sy04w/8p0kbOaVoCY5zcSEyLuUFCJWOsRpw/07e/ltgFdTGsqU6ejZRfh5eXFNoETm8YEMdUK2T1QSW8sAS7e2fSfmvGeP21VHHTyHNxymTT0JVcdtbs2BDhBfxcC7bAlkaBEFe7dafDUyOhG02laomIAmBSx6y+kGW+Q4Kt9Fql2DfwIV+nMsR/4Z/3RtZe/XPcYAIe23sb8XAuwG4LxxiN7+f03B2pWOJgkhPkDii7EOJiGdpc3cOxpNC74NAkasTPAQBFvI65K9sqvBxWU82s+x21BmgzwJuHjsraLkK92s79BtbLgVbscIawXbqFDVMdsyMiVZexjQymCBdERbXCD9cG2DvpZu3JTSMMShMLsVn4B79XRj9oupiJDWRSr9bSRG4h9Zr0wkueFzFUlgUcttUEmg3rYE9oWny0lx5i/H+SxxJ8Bxj1ZVjVn9d4odLHiAkZDoTFfjOeQ9iiDlR5IpuYPQfwD6sj/HMZzwQkUWqjW/JJrxPckLB7CHkFUNG4RySCWGWuy95033gW5Oj/27wtXrZFrZ/LyuqZJDEO0KJn+67nJ+5KRG3tuRXNO8NMSf4orGRqO39pPqPcSaTP+5d97O0x/8QKKi/QNZS95sc47Sbm6enEqiARJSs2JfVu+9ssZVj9l+2bp/Xanz0lAJ3m/EYbEIXXcfBog2kAApQLoWDJF4Asu0Zejv7aHMtmWf4csNuhHuxVT0mVbsZ/LjJ0RYMBFD4X3fQIGcc0a5uOl2YuQckBoTP/n9FDZsFfztAvGGuDJTkQKVI/x60nHBSYRhNgCy5pvxQmFNrOzi+950LfFAaGwlHZzDe4ukugCvzEtOew/3tiNWzIC/k3coY83oGybMyQTT0rIHt1BEWfST7Vyw6lmjMKQ4wJ//pGu42tTYrMW6lDuAZ5OJSA4TnGpq3rv1Fq2ZEHjU8sF1OHBvbr3n2i/RkOjZF3gOKRI5XGobCwYPFFXtidKaz8WP3AAoxVaZZu89eNHj5sBTStYWRtZRqgc0LAfp8yTpMxXfgvvdbieARymGsbzLRWCYJfBEAQEi8YR58nJK02M6BYSGl3ETD/FTu0seWbEe+PtRU+dduanYuCrtMG5NqwOG5gOdwHp9g526bvrcdWWgHHkeQwX8iy1NbC7eLON4vjmWRqCjppLRxG6rRUPI+S1VoiUwTdChsN+BYS0ubu9rH2ICLyRBWvLKyHCTv93maE1byN624jZExDHQbDtrMKUhuvEOFY92HTSaAd4zQU6fExxbHcPBoFywC+gZMkLAT73jeYrr1hoxnyfF62xtboG9HMW8QvuN11ozxgla02i/ZRKTGxQeepTMfLTvorX1yfl08yyglWyVY3d3bVKSGxNeX9LnW0EyOPj4ufzFpf24StETnSEch4L1GwHmxnaP6rG0skmi0FKLy/UIvXNr99aLEwm8k5ztuk6+u+SPpeXGaEq6zfJ562H2TJZokyNgSDk57tyAizDTg+FepvnAX3rBG77JPNby2TUHO1yvp0WiiGT8CKfst6aX6iqg6z5G6oAhqwYIxXbjn1SRGnRycSI/+yQn/pIe66Lb6oKR1uRRdwUHosbIWHMiemc2IN5GryGUzR37ZJVM4ppcgywwvg2BW5Nr6l7O+MHvq732BbqzjqP7KnTGTl1ipyhvqsJdg9huWdv9Q8G5UTa8jx0l4JgGTbjY8Jby0DBU8x85329Ubuo/N/wxI9Zd+7im1fJDPCBeA5Qj/1lkOvFOWPGJkqZ+Y7+rnqPpA7gk8OXWSEJR4/qK+mJF2SkyZxQPhbDXR+Y+Ab3LiZ3Fq0yhu0SKkC1vuRUjIZfQqG3pdXHZhodkvC6m2xVhvnDXS3XCyGM9ZpMm/BRIqbtrAVZ6tbcmhRXF13PCiq19ew5ZjVA7x5bQJ8EYVyV0VmaPPmqz81OYpSADSGNCfK6Ib6eXwd/tCF5lxNbX8yIdf/WVfZICJ9z7aisgNScxkuOq+/aAvgtgeCmk0LqzNDUkPO7nmE3zU48a5jSNpb7THyd5SsN52A1LEOn0Ca/4wWsfOuupIr+iikoffMxUwVtSwIqQMfO+Y5eqSjYuJ8V//pktfe53+zVv/mVAZN4h5Ds0wITvb441R8QNV58gGKwAF95RexF82vxyJh1/J1dVqJCh8pC2/+sxKbZAuT+Wrb3RuO7fVpErt+xVf9Uhx1KzKfuSByOpCSNAHc2iqYgaVXExQNfuJOWYOYJJNptWqrTN4ZkEokbtgwfY4/nfyw/7JEDFkbJGVKs0YJWoGE/0oeS+H1w3CWLFZkBUwArJoXLfhDCQ/7MQcFTGRsdauZ6URRvbMDUQf6AGSdcZ4SQm4tmduJboO/pEWi7ZW2cqSTM/rIIwbo2QATflZKmSsZPROv6to6G8b4W6mMAJF9Fl7gM/UYyzvFoqBx4AE2X+zW1eNCfTJ2a03fwpKXqeuGZgiw13keObnXGwzIzohbj8O6buiDO0I6gynKSntMvFRDSIq5BVYAhMIiYefE8hFw+ONjc1Ugw/fWCE5ylFO2A6XvrCR+ABakpJJzr52G5exxWCzjaifujcTRRAmxC7fgB9asK6lLqYiptiwDVKsf/2ESyJvhuWZNjBR/wlTN+LuRDWTL6rL7R5348NH4lgx5B3RGGeLVH0mWFUQ1lU9DiBmY1nJHJFd/khQUnUNFqU+aBEOh8OJWT/ykwOyq1au0nzmsU5nMAlPvUf6ppnf59GjCIlI7AyQyro6NY7RF2AF0cj9TztB3uHXGItCreIoydm1UpqCgXKQmPZzWVsmFleKB7RDJlKgPV8CG+/2RmT0EIspNBRvdKR3UpC1y0PP+Wnpzh4h52IR0BKB7dePY2bdpTZTpdh7cvVZhpGX4eVnxsqxPfwYGqvm1t/61MAFBkOraBWe0H0p052iY4iftST8K8uMYbbXfxPvMuvPUxdv5UOZKNa0vvKKBX+Z+A2cU/eITwUqwMqEoKUJeYxWLq7zAzVDXdNxe97sGHHs8hiej/hgVRqSP7XLlJ+xgPNLFDLpQVjzvMu62/NyhkoHDh5WClwEHaXqM8M//rjefrITkL6bArzpe1XedKkmLJR+WLWYJdZart5fdUFja7xr4hVt1yokisFir77lNj6HTguoP2YQ8GbokufI4pwQnwa0TKZZ+DahKQTXs/mGG81KgV1be1bVABAx9d7L0KUCM8/WqctSVoDYZH+HSzT896AbNsTt9BsseYNF5wdPXvqt3MHtcBjdpZx04a0Ez5yirridvSsXjZxei82HVpC9P6jHYh1MsD5HeAuEoiw8Inn8+cT1zPAg4veLpzM9o31lK85zHgZRIr+As924XBBoH06LrS5O7BSrMAiXLvZ7nso44QdFwWyQ4Orljc8tYA53ZdP4JeMHOXHgJg7xDYguJXg6PMm3mHR5TJw5nJiW+jJafoiCsal441V6GiOZY0DIvslV1an19wa+ZMiiCRtdcj6iQgRghQVf1etEk9JLuBwXmZ/Jrq2FMSbRu02GYEKX3sAdBQfoETx/RzuRDe5b4yLKSK99cSW8bezLi2XywfStDnYDtXNuK0A8kvWImHYFV+SZG+2zxdbqUo7eqbVUJ2dv0Vjd9p0aaY0831JqdB/+d58lEwFio2rhFk9s+l+2kd0tjNlOwPgOgXS3h2Ixo4iwaVsTFoKbQ6b6j1qvfIWfucnaIN1VNNDfutTBuvb4InmIAg89F2XRDd0NXH8rI1ur46K7rjKmH4J9YDgAVX5QOCtMjy/E5TuPC8VCNXqFeZyy4rVRspIqZvBeC9kyGbBgZZElf50bTN/fgX3T22D3Z5E515dfnBpkBd/ejuZqNHN21n/rKjKf7PTESPN68r/SXj248exPVBdAE8W5dbtch4IKjwSMOcsz4tsy9a3/wewMXpoymCJgUJ50JS+zTp+NCzjMFDA7JhUdJY1mUNZfTQa9WXBkSJvj8YfwoVN8itk1Svc1Qd5ERrZoaxdbWmJ27CcZ+FG+u1XxnH8QtRlmm7bT+Pv1nFD2texNSnYbtvSFy8hTqh+EyF3b+83n9qS6OyMWjQ8bRaEkI5RyussodOezWYbBVinigh8y0tgrqKE12lpzm89YBYJ9SWaQZghtYsTqkhvdogxk+nIPaubCU5Gnr+i94xm9FLfINWxsf612DzLPK/QMnWZNo8Y6RYEYNwVEUtCunOf5hnO7J2ntqyt3mbujLFATJkGJso1spdBX5xT7O29BvtmmENswi3CYClDi/COJwKKd4s76vkcpKJXKJLiiRShCfLZOkoZ3eNODIv+WdoHtnqe4keaaoZJjT+vMTFk1DMxICjyRO2oPCt2POCh3x92jgN4aJ0xnYUGSJZNFFmSTvG9syAqnOH183sS7jnaLgjBAEpBQ9Gp75i3a4NZUudTLMAp/btrqkWzGfA59CixGY0MmIff8OKR6ci4PVLY9nh3vsEmPxjfoEFBtlINBhEhDXdZY+QC9dtWzMltCq7oNWbLpFd0wt9xwKzlifh0EBvb3zNjLzJxL9lKldn9gClguLI18T2gU7LgsWZeNJbkFZnIQDrw48pwD8oGjJPRStrUN26Q3XoKwEbmCjWkS8PTEzjjyYMjDiqB+XUJfRaU1R1/430mFx0Yz2S5NCxdnzkyssPRYVCC9wpudhEyLrCJRKemnHbCUetwQIj692HzA95SPiFoYfGhNiWK9qQNungR3D7HDXxoIGzOSzjHNpekQViG1N/SMzwehbCnGYeiEUROuHN1Qf54ewQBc+KbbEZM/zOibMgdJcDU7rPvHk/s1f1t0z9ok8m46/3ki1Hi/GsdpkPWEq3ctwaJdVzrtSI9ys3y+TKCMyGNRTrkxckhnAxQLx3lAN6E92xl1HwicoXeBQi/jykdIjHMXcE68pdtQVQ5Tq+BIGvVGgD5SKsDzD9ygKzcT2Ox2whl8guTf9GUckyOl0lnnU6Nf9yawUj9fKasZjpPueeSzCE414RGc4opz2P2yOOQqKNgX/vSnl9Sj0L3Fa+GwBShboS/MrfTaKVeAHoQHQpB9O5X69+TnleUIM3bObEXAwibwXfgefZzpnCxvUWUxshOuSBLhMPB/iSnLQ9EKDJNJC0aD2Daa9BIQweyu1RZhSohc7ekfMOGZBrICl1zi7P2gHH7nWu4K8bDmw8dBhOvKmAGomIZcs6YxVNUhqPxkcFPxnF2rt/xBvAH0A2E7OeUDVy8DbwXCDTlt0iExkLuef0F9HIGeO8ZsFAFFFF380gBRr7qmzS7Ih8+SiX7sb/R59Tv4jQUPhfsaIBQljbpPBHw8q+9uqm9wPBCrRwM7cTQTE5BinBO5CGFGwyHtf7MBXNne6mzir9sqJFTam67Qu417CiEzytqF+BjOfWwvkbb+u1sAT0SD6/rYiFu2hmtyVEUi0IWsb1Q3+HwmdSXQY7DG2g22zhHEKqqwJJ3l3bj6gJzsbI2WHO01rVlj6eV2hl1RyM2iivMEf4d07hJK017it6VZrf/KeBfoucCGvTZkVRz2prLKHaauIKfHrES4++GXklhtqtixrnRrHK7cBY/rj6tRUH8Z6UFBdfHqFpyQdLV/s0P81MKYbKr6z+e8IRr3oRtRbt0a/eGiRL1aQcW/VVIQ1qKelQF0vRWISn0wx/Y9iXp597/1djczYZgDNBq9GC4oH1oCbXR52qiKetUDeZU6/VuAI8iqD2JJTOGH1VcOrmg6BCN92FHm9Pxp2QYqtH4CoA+ozQBy+HFaFMAz5JyiOhf+lYEWHEg8sW/YHgmJ4/02uamQHku8vjYtveOSvziwWfeWOAmIDl4j8Qyj+J"};
+(function(){let i=0;const row=(w,c)=>`<div class="row ${c}">`+[...w].map(ch=>`<span class="t" style="animation-delay:${(i++)*55}ms">${ch}</span>`).join('')+'</div>';
+  document.getElementById('board').innerHTML=row('ORGANIK','a')+row('LABS','b');})();
+const u8=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0));
+async function unlock(pw){
+  const base=await crypto.subtle.importKey('raw',new TextEncoder().encode(pw),'PBKDF2',false,['deriveKey']);
+  const key=await crypto.subtle.deriveKey({name:'PBKDF2',salt:u8(P.salt),iterations:P.iter,hash:'SHA-256'},base,{name:'AES-GCM',length:256},false,['decrypt']);
+  return new TextDecoder().decode(await crypto.subtle.decrypt({name:'AES-GCM',iv:u8(P.iv)},key,u8(P.ct)));
+}
+function render(html){document.open();document.write(html);document.close()}
+const err=document.getElementById('err'),btn=document.getElementById('go'),K='organik-labs.pass';
+if(!window.crypto||!crypto.subtle)err.textContent='This browser can\'t open the lab (needs HTTPS and a modern browser).';
+(async()=>{let s=null;try{s=localStorage.getItem(K)}catch(e){}
+  if(s){try{render(await unlock(s));return}catch(e){try{localStorage.removeItem(K)}catch(_){}}}})();
+document.getElementById('f').addEventListener('submit',async e=>{
+  e.preventDefault();const pw=document.getElementById('pw').value.trim();if(!pw)return;
+  btn.disabled=true;btn.textContent='Opening…';err.textContent='';
+  try{const html=await unlock(pw);if(document.getElementById('rem').checked){try{localStorage.setItem(K,pw)}catch(_){}}render(html);}
+  catch(x){err.textContent='That password didn\'t work.';btn.disabled=false;btn.textContent='Enter the lab'}
+});
+</script>
 </body>
 </html>

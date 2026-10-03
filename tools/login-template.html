@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<title>Organik Labs</title>
+<meta name="theme-color" content="#141517">
+<link rel="icon" type="image/png" href="/pomodoro/icons/favicon-32.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;500&display=swap">
+<style>
+:root{color-scheme:dark;--housing:#141517;--panel:#1c1d20;--edge:#2a2b2f;--flap-hi:#323337;--flap-lo:#232427;--ink:#f1ebdd;--muted:#8c8a84;--amber:#f4b63f;
+  --f-flap:"Barlow Condensed","Arial Narrow",Arial,sans-serif;--f-ui:"Barlow","Helvetica Neue",Arial,sans-serif}
+*{box-sizing:border-box}
+html{height:100%}
+body{margin:0;min-height:100%;display:grid;place-items:center;background:var(--housing);color:var(--ink);font-family:var(--f-ui);
+  padding:max(24px,env(safe-area-inset-top)) 16px max(24px,env(safe-area-inset-bottom));-webkit-font-smoothing:antialiased}
+form{width:100%;max-width:380px;background:linear-gradient(180deg,#202124,var(--panel));border:1px solid var(--edge);border-radius:22px;
+  padding:34px 26px 26px;display:flex;flex-direction:column;gap:16px;text-align:center;
+  box-shadow:0 30px 60px -20px rgba(0,0,0,.7),inset 0 1px 0 rgba(255,255,255,.05)}
+.board{display:flex;flex-direction:column;align-items:center;gap:6px}
+.row{display:flex;gap:4px}
+.t{position:relative;width:30px;height:44px;border-radius:5px;background:linear-gradient(180deg,var(--flap-hi) 0 50%,var(--flap-lo) 50% 100%);
+  box-shadow:0 3px 6px rgba(0,0,0,.45);display:grid;place-items:center;font-family:var(--f-flap);font-weight:700;font-size:30px;line-height:1;color:var(--ink);
+  animation:flip .5s ease both}
+.t::after{content:"";position:absolute;left:0;right:0;top:50%;height:1px;background:rgba(0,0,0,.55)}
+.row.b .t{color:var(--amber)}
+@keyframes flip{0%{transform:rotateX(90deg)}60%{transform:rotateX(-12deg)}100%{transform:none}}
+p{margin:0;color:var(--muted);font-size:15px}
+.lbl{font-family:var(--f-flap);font-weight:600;font-size:12px;letter-spacing:.28em;text-transform:uppercase;color:var(--muted);margin-top:4px}
+input[type=password]{font:inherit;font-size:18px;letter-spacing:.2em;padding:13px 14px;border-radius:10px;border:1px solid #2f3034;background:var(--housing);color:var(--ink);text-align:center;width:100%}
+input:focus-visible,button:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+button{font-family:var(--f-flap);font-weight:700;font-size:17px;letter-spacing:.2em;text-transform:uppercase;padding:14px;border:0;border-radius:10px;background:var(--amber);color:#141517;cursor:pointer}
+button:disabled{opacity:.6}
+label.rem{font-size:14px;color:var(--muted);display:flex;gap:8px;justify-content:center;align-items:center}
+label.rem input{accent-color:var(--amber)}
+.err{color:#e0805f;font-size:14px;min-height:1.2em}
+.maker{display:flex;flex-direction:column;align-items:center;gap:6px;padding-top:6px}
+.maker-mark{filter:drop-shadow(0 -1px 0 rgba(0,0,0,.85)) drop-shadow(0 1.5px 0 rgba(255,255,255,.16)) drop-shadow(0 0 1px rgba(0,0,0,.5))}
+.maker-logo{display:block;width:34px;height:38px;background:linear-gradient(180deg,#4a4b50,#3a3b40);
+  -webkit-mask:url(/tuner/icons/organik-mark.png) center/contain no-repeat;mask:url(/tuner/icons/organik-mark.png) center/contain no-repeat}
+.maker-text{font-family:var(--f-flap);font-weight:700;font-size:11px;letter-spacing:.32em;text-transform:uppercase;color:#4c4d52;text-shadow:0 -1px 0 rgba(0,0,0,.85),0 1.5px 0 rgba(255,255,255,.14)}
+@media (prefers-reduced-motion:reduce){.t{animation:none}}
+</style>
+</head>
+<body>
+<form id="f" autocomplete="off">
+  <div class="board" aria-label="Organik Labs" id="board"></div>
+  <p>A private workshop. Enter the password to come in.</p>
+  <div class="lbl">Password</div>
+  <input type="password" id="pw" aria-label="Password" autofocus>
+  <label class="rem"><input type="checkbox" id="rem" checked> Remember on this device</label>
+  <button type="submit" id="go">Enter the lab</button>
+  <div class="err" id="err" role="alert"></div>
+  <footer class="maker"><span class="maker-mark" aria-hidden="true"><span class="maker-logo"></span></span><span class="maker-text">An Organik Labs creation</span></footer>
+</form>
+<script>
+const P=__PAYLOAD__;
+(function(){let i=0;const row=(w,c)=>`<div class="row ${c}">`+[...w].map(ch=>`<span class="t" style="animation-delay:${(i++)*55}ms">${ch}</span>`).join('')+'</div>';
+  document.getElementById('board').innerHTML=row('ORGANIK','a')+row('LABS','b');})();
+const u8=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0));
+async function unlock(pw){
+  const base=await crypto.subtle.importKey('raw',new TextEncoder().encode(pw),'PBKDF2',false,['deriveKey']);
+  const key=await crypto.subtle.deriveKey({name:'PBKDF2',salt:u8(P.salt),iterations:P.iter,hash:'SHA-256'},base,{name:'AES-GCM',length:256},false,['decrypt']);
+  return new TextDecoder().decode(await crypto.subtle.decrypt({name:'AES-GCM',iv:u8(P.iv)},key,u8(P.ct)));
+}
+function render(html){document.open();document.write(html);document.close()}
+const err=document.getElementById('err'),btn=document.getElementById('go'),K='organik-labs.pass';
+if(!window.crypto||!crypto.subtle)err.textContent='This browser can\'t open the lab (needs HTTPS and a modern browser).';
+(async()=>{let s=null;try{s=localStorage.getItem(K)}catch(e){}
+  if(s){try{render(await unlock(s));return}catch(e){try{localStorage.removeItem(K)}catch(_){}}}})();
+document.getElementById('f').addEventListener('submit',async e=>{
+  e.preventDefault();const pw=document.getElementById('pw').value.trim();if(!pw)return;
+  btn.disabled=true;btn.textContent='Opening…';err.textContent='';
+  try{const html=await unlock(pw);if(document.getElementById('rem').checked){try{localStorage.setItem(K,pw)}catch(_){}}render(html);}
+  catch(x){err.textContent='That password didn\'t work.';btn.disabled=false;btn.textContent='Enter the lab'}
+});
+</script>
+</body>
+</html>
