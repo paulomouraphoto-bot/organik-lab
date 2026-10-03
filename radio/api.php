@@ -16,7 +16,9 @@
 const UA = 'OrganikTuner/1.0 (+https://lab.organikreations.com/radio/)';
 const RB_HOSTS = ['de1.api.radio-browser.info', 'de2.api.radio-browser.info', 'fi1.api.radio-browser.info', 'nl1.api.radio-browser.info'];
 
-$FIP = ['fip','fip_rock','fip_jazz','fip_groove','fip_world','fip_nouveautes','fip_reggae','fip_electro','fip_metal','fip_pop','fip_hiphop','fip_sacre_francais'];
+// FIP channel => Radio France station id (for the livemeta API)
+$FIP = ['fip' => 7, 'fip_rock' => 64, 'fip_jazz' => 65, 'fip_groove' => 66, 'fip_world' => 69, 'fip_nouveautes' => 70,
+        'fip_reggae' => 71, 'fip_electro' => 74, 'fip_metal' => 77, 'fip_pop' => 78, 'fip_hiphop' => 95, 'fip_sacre_francais' => 96];
 
 $BANDS = [
   'scotland' => [
@@ -32,10 +34,11 @@ $BANDS = [
       ['name' => 'MFR', 'countrycode' => 'GB', 'limit' => 4],
       ['name' => 'Tay', 'countrycode' => 'GB', 'limit' => 4],
       ['name' => 'Cool FM Scotland', 'limit' => 3],
-      ['tag' => 'scottish', 'limit' => 40],
-      ['tag' => 'scotland', 'limit' => 40],
+      ['tag' => 'scottish', 'countrycode' => 'GB', 'limit' => 40],
+      ['tag' => 'scotland', 'countrycode' => 'GB', 'limit' => 40],
     ],
-    'max' => 40,
+    'max' => 45,
+    'pin' => ['/^BBC Radio Scotland/i', '/nan G/i', '/^Clyde 1/i', '/^Forth ?1$/i', '/^Celtic Music Radio/i', '/^Radio Skye/i'],
   ],
 ];
 
@@ -53,7 +56,6 @@ try {
     case 'countries': out(countries(), 86400); break;
     case 'icy':       out(icy_now($_GET['id'] ?? ''), 15); break;
     case 'click':     out(click($_GET['id'] ?? ''), 0); break;
-    case 'diag':      out(diag(), 0); break;
     default:          http_response_code(400); out(['error' => 'unknown action'], 0);
   }
 } catch (Throwable $e) {
@@ -66,42 +68,47 @@ try {
 
 function fip_now($ch) {
   global $FIP;
-  if (!in_array($ch, $FIP, true)) { http_response_code(400); return ['error' => 'unknown channel']; }
-  return cached('fip-' . $ch, 15, function () use ($ch) {
-    $body = fetch('https://www.radiofrance.fr/fip/api/live?webradio=' . rawurlencode($ch), 6, ['Accept: application/json']);
+  if (!isset($FIP[$ch])) { http_response_code(400); return ['error' => 'unknown channel']; }
+  $id = $FIP[$ch];
+  $r = cached('fip-' . $ch, 12, function () use ($id) {
+    $body = fetch('https://api.radiofrance.fr/livemeta/live/' . $id . '/fip_extended', 6, ['Accept: application/json']);
     $j = $body ? json_decode($body, true) : null;
-    if (!is_array($j)) return null;
-    $now = $j['now'] ?? $j;
-    $first  = trim(strip_tags((string)($now['firstLine']['title'] ?? $now['firstLine'] ?? '')));
-    $second = trim(strip_tags((string)($now['secondLine']['title'] ?? $now['secondLine'] ?? '')));
-    $song = $now['song'] ?? [];
-    $cover = find_img($now['visuals'] ?? null) ?: find_img($now['cover'] ?? null) ?: find_img($song);
-    $delay = (int)($j['delayToRefresh'] ?? 30000);
+    if (!is_array($j) || !isset($j['now'])) return null;
+    $n = $j['now'];
+    $cover = (isset($n['cover']) && preg_match('/^[0-9a-f-]{36}$/', (string)$n['cover']))
+      ? 'https://www.radiofrance.fr/pikapi/images/' . $n['cover'] . '/600x600?webp=false' : null;
+    $title = trim((string)($n['title'] ?? ''));
+    $artist = trim((string)($n['interpreters'] ?? ''));
+    if ($title === 'Le direct' && $artist === '') $title = '';
     return [
-      'title'  => $first ?: null,
-      'artist' => $second ?: null,
-      'album'  => trim((string)($song['release']['title'] ?? '')) ?: null,
-      'year'   => $song['year'] ?? null,
+      'title'  => $title ?: null,
+      'artist' => $artist ?: null,
+      'album'  => trim((string)($n['album'] ?? '')) ?: null,
       'cover'  => $cover,
-      'start'  => $now['startTime'] ?? null,
-      'end'    => $now['endTime'] ?? null,
-      'refresh'=> max(10, min(90, (int)round($delay / 1000))),
+      'end'    => $n['endTime'] ?? null,
     ];
-  }) ?? ['title' => null, 'artist' => null, 'cover' => null, 'refresh' => 45];
+  });
+  if (!$r) return ['title' => null, 'artist' => null, 'cover' => null, 'refresh' => 45];
+  // poll again just after this song should end (but not too eagerly, nor too lazily)
+  $r['refresh'] = $r['end'] ? max(8, min(90, (int)$r['end'] - time() + 4)) : 45;
+  return $r;
 }
 
 function band($name) {
   global $BANDS;
   if (!isset($BANDS[$name])) { http_response_code(400); return ['error' => 'unknown band']; }
   $b = $BANDS[$name];
-  $list = cached('band-' . $name, 6 * 3600, function () use ($b) {
+  $list = cached('band2-' . $name, 6 * 3600, function () use ($b) {
     $all = [];
     foreach ($b['searches'] as $s) {
       $s += ['hidebroken' => 'true', 'order' => 'clickcount', 'reverse' => 'true'];
       foreach (rb('/json/stations/search', $s) ?: [] as $st) $all[] = $st;
     }
     if (!$all) return null;
-    return dedupe($all, $b['max']);
+    $list = dedupe($all, $b['max']);
+    $rank = function ($st) use ($b) { foreach ($b['pin'] ?? [] as $i => $re) if (preg_match($re, $st['name'])) return $i; return 99; };
+    usort($list, fn($x, $y) => $rank($x) <=> $rank($y));   // stable in PHP 8: the rest keep their popularity order
+    return $list;
   });
   return ['stations' => $list ?? []];
 }
@@ -166,18 +173,6 @@ function icy_now($id) {
 // ==========================================================================
 // Helpers
 
-function diag() {   // TEMPORARY: see what Radio France answers from this server
-  $out = [];
-  foreach (['https://www.radiofrance.fr/fip/api/live?webradio=fip_jazz', 'https://www.radiofrance.fr/fip/api/live?webradio=fip',
-            'https://api.radiofrance.fr/livemeta/live/65/fip_extended', 'https://api.radiofrance.fr/livemeta/pull/65'] as $u) {
-    $h = curl_init($u);
-    curl_setopt_array($h, [CURLOPT_RETURNTRANSFER => true, CURLOPT_FOLLOWLOCATION => true, CURLOPT_TIMEOUT => 8, CURLOPT_ENCODING => '', CURLOPT_USERAGENT => UA, CURLOPT_HTTPHEADER => ['Accept: application/json']]);
-    $b = curl_exec($h);
-    $out[] = ['url' => $u, 'code' => curl_getinfo($h, CURLINFO_RESPONSE_CODE), 'err' => curl_error($h), 'type' => curl_getinfo($h, CURLINFO_CONTENT_TYPE), 'body' => substr((string)$b, 0, 1500)];
-    curl_close($h);
-  }
-  return $out;
-}
 
 function out($data, $maxAge) {
   header('Cache-Control: ' . ($maxAge > 0 ? "public, max-age=$maxAge" : 'no-store'));
