@@ -1,0 +1,17 @@
+{
+  "name": "Quote Jar",
+  "short_name": "Quote Jar",
+  "description": "Catch the funny and surprising things the boys say, in two taps, and turn each year into a little book.",
+  "id": "/quote-jar/",
+  "start_url": "/quote-jar/",
+  "scope": "/quote-jar/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f4ecde",
+  "theme_color": "#f4ecde",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

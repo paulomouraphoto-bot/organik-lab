@@ -1,0 +1,410 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Quote Jar</title>
+<meta name="theme-color" content="#f4ecde">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Quote Jar">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/favicon-32.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,700;1,9..144,400;1,9..144,500&family=Barlow:wght@400;500;600&display=swap">
+<style>
+:root{
+  --paper:#f4ecde; --card:#fffaf0; --ink:#2e3a34; --soft:#6f7a72; --line:#e3d8c4;
+  --clay:#d66b3f; --honey:#e8b548; --sage:#7aa084;
+  --f-serif:'Fraunces',Georgia,serif; --f-sans:'Barlow',system-ui,sans-serif;
+  --safe-b:env(safe-area-inset-bottom,0px);
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--f-sans);-webkit-tap-highlight-color:transparent}
+button,input,textarea,select{font:inherit;color:inherit}
+main{max-width:640px;margin:0 auto;padding:20px 16px calc(120px + var(--safe-b))}
+
+header{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin:8px 0 18px}
+h1{font-family:var(--f-serif);font-weight:700;font-size:34px;line-height:1;margin:0;letter-spacing:-.01em}
+h1 small{display:block;font-family:var(--f-sans);font-weight:500;font-size:13px;letter-spacing:.14em;text-transform:uppercase;color:var(--soft);margin-bottom:6px}
+.icon-btn{border:1px solid var(--line);background:var(--card);border-radius:999px;width:42px;height:42px;display:grid;place-items:center;cursor:pointer}
+.icon-btn svg{width:20px;height:20px}
+.head-actions{display:flex;gap:8px}
+
+.filters{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;margin-bottom:14px;scrollbar-width:none}
+.chip{border:1px solid var(--line);background:var(--card);border-radius:999px;padding:8px 14px;font-weight:500;cursor:pointer;white-space:nowrap}
+.chip[aria-pressed=true]{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+
+.shake{width:100%;border:1.5px dashed #cdbd9f;background:transparent;border-radius:16px;padding:14px;cursor:pointer;color:var(--soft);font-weight:500;margin-bottom:18px}
+.shake:active{transform:scale(.99)}
+
+.month{font-family:var(--f-sans);font-weight:600;font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--soft);margin:22px 4px 10px}
+.q{position:relative;background:var(--card);border:1px solid var(--line);border-radius:18px;padding:18px 18px 14px;margin-bottom:12px;cursor:pointer;box-shadow:0 1px 0 rgba(46,58,52,.04)}
+.q blockquote{margin:0;font-family:var(--f-serif);font-size:21px;line-height:1.3;font-weight:500}
+.q blockquote::before{content:"\201C";color:var(--clay);margin-right:2px}
+.q blockquote::after{content:"\201D";color:var(--clay);margin-left:1px}
+.q .ctx{font-family:var(--f-serif);font-style:italic;color:var(--soft);margin-top:8px;font-size:15px}
+.q .meta{display:flex;align-items:center;gap:8px;margin-top:12px;font-size:13px;color:var(--soft)}
+.who{display:inline-flex;align-items:center;gap:6px;font-weight:600;color:var(--ink)}
+.dot{width:10px;height:10px;border-radius:50%;display:inline-block}
+.q img{display:block;width:100%;max-height:320px;object-fit:cover;border-radius:12px;margin-top:12px}
+.q audio{width:100%;margin-top:10px;height:36px}
+.empty{text-align:center;padding:48px 16px;color:var(--soft)}
+.empty p{font-family:var(--f-serif);font-size:20px;color:var(--ink);margin:0 0 6px}
+
+.fab{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(22px + var(--safe-b));border:0;background:var(--clay);color:#fff;border-radius:999px;padding:16px 28px;font-weight:600;font-size:17px;letter-spacing:.02em;box-shadow:0 10px 24px rgba(214,107,63,.35);cursor:pointer;display:flex;align-items:center;gap:8px;z-index:5}
+.fab:active{transform:translateX(-50%) scale(.97)}
+
+/* sheet */
+.scrim{position:fixed;inset:0;background:rgba(46,58,52,.35);opacity:0;pointer-events:none;transition:opacity .2s;z-index:10}
+.scrim.open{opacity:1;pointer-events:auto}
+.sheet{position:fixed;left:0;right:0;bottom:0;max-width:640px;margin:0 auto;background:var(--paper);border-radius:22px 22px 0 0;padding:10px 16px calc(18px + var(--safe-b));transform:translateY(105%);transition:transform .25s ease;z-index:11;max-height:92vh;overflow-y:auto}
+.sheet.open{transform:none}
+.grab{width:40px;height:5px;border-radius:3px;background:#d6c9b2;margin:4px auto 14px}
+.sheet h2{font-family:var(--f-serif);font-size:22px;margin:0 0 14px}
+label.lbl{display:block;font-size:12px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--soft);margin:14px 0 6px}
+textarea,input[type=text],input[type=date]{width:100%;border:1px solid var(--line);background:var(--card);border-radius:14px;padding:12px 14px;font-size:16px}
+textarea{font-family:var(--f-serif);font-size:20px;min-height:96px;resize:vertical}
+.row{display:flex;gap:8px;flex-wrap:wrap}
+.media{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:14px}
+.mbtn{border:1px solid var(--line);background:var(--card);border-radius:14px;padding:12px;display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;font-weight:500}
+.mbtn.rec{background:#c0392b;color:#fff;border-color:#c0392b}
+.preview{margin-top:10px}
+.preview img{max-width:100%;max-height:200px;border-radius:12px;display:block}
+.preview audio{width:100%;margin-top:6px}
+.rm{border:0;background:none;color:var(--clay);font-weight:600;padding:6px 0;cursor:pointer}
+.actions{display:flex;gap:8px;margin-top:20px}
+.btn{flex:1;border:0;border-radius:14px;padding:14px;font-weight:600;font-size:16px;cursor:pointer}
+.btn.primary{background:var(--ink);color:var(--paper)}
+.btn.ghost{background:transparent;border:1px solid var(--line)}
+.btn.danger{background:transparent;color:#b23a2a;border:1px solid #e6c2b8;flex:0 0 auto;padding:14px 16px}
+.small{font-size:14px;color:var(--soft);line-height:1.45}
+.setting{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px;margin-bottom:10px}
+.setting h3{margin:0 0 6px;font-size:16px}
+.kidrow{display:flex;gap:8px;align-items:center;margin-top:8px}
+.kidrow input[type=color]{width:42px;height:42px;border:1px solid var(--line);border-radius:12px;padding:2px;background:var(--card)}
+
+/* random pull */
+.pull{position:fixed;inset:0;display:grid;place-items:center;padding:24px;z-index:12;pointer-events:none;opacity:0;transition:opacity .2s}
+.pull.open{opacity:1;pointer-events:auto}
+.pull .q{max-width:480px;width:100%;transform:rotate(-1.5deg) scale(.9);transition:transform .35s cubic-bezier(.2,1.4,.4,1);box-shadow:0 20px 50px rgba(46,58,52,.25)}
+.pull.open .q{transform:rotate(-1.5deg) scale(1)}
+
+.toast{position:fixed;left:50%;bottom:calc(96px + var(--safe-b));transform:translateX(-50%) translateY(20px);background:var(--ink);color:var(--paper);padding:10px 16px;border-radius:999px;font-size:14px;opacity:0;transition:.2s;z-index:20;pointer-events:none}
+.toast.show{opacity:1;transform:translateX(-50%)}
+
+/* maker's mark, pressed into the paper */
+.maker{display:flex;flex-direction:column;align-items:center;gap:6px;padding-top:36px}
+.maker-mark{filter:drop-shadow(0 1px 0 rgba(255,255,255,.9)) drop-shadow(0 -1px 0 rgba(46,58,52,.18))}
+.maker-logo{display:block;width:32px;height:36px;background:#d9ccb4;-webkit-mask:url(icons/organik-mark.png) center/contain no-repeat;mask:url(icons/organik-mark.png) center/contain no-repeat}
+.maker-text{font-weight:600;font-size:11px;letter-spacing:.32em;text-transform:uppercase;color:#cbbda3;text-shadow:0 1px 0 rgba(255,255,255,.9)}
+
+/* the book */
+#book{display:none}
+@media print{
+  @page{size:A5;margin:16mm}
+  body{background:#fff}
+  main,.fab,.sheet,.scrim,.pull,.toast{display:none!important}
+  #book{display:block;color:#222;font-family:var(--f-serif)}
+  .b-cover{height:170mm;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;page-break-after:always}
+  .b-cover h1{font-size:40px;margin:0 0 8px}
+  .b-cover p{font-family:var(--f-sans);letter-spacing:.2em;text-transform:uppercase;font-size:11px;color:#777}
+  .b-month{font-family:var(--f-sans);font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:#999;margin:18px 0 6px;page-break-after:avoid}
+  .b-q{page-break-inside:avoid;margin:0 0 22px}
+  .b-q blockquote{margin:0;font-size:18px;line-height:1.35}
+  .b-q .b-ctx{font-style:italic;color:#777;font-size:13px;margin-top:4px}
+  .b-q .b-who{font-family:var(--f-sans);font-size:11px;color:#555;margin-top:6px;letter-spacing:.06em}
+  .b-q img{max-width:100%;max-height:70mm;margin-top:8px;border-radius:4px}
+  .b-end{text-align:center;font-family:var(--f-sans);font-size:10px;letter-spacing:.3em;text-transform:uppercase;color:#bbb;margin-top:30px}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1><small>The boys'</small>Quote Jar</h1>
+    <div class="head-actions">
+      <button class="icon-btn" id="bookBtn" aria-label="Make the year book" title="Year book">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2V5z"/><path d="M4 19a2 2 0 0 1 2-2h13"/></svg>
+      </button>
+      <button class="icon-btn" id="setBtn" aria-label="Settings and backup" title="Settings">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-1.8-.3 1.6 1.6 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.6 1.6 0 0 0-1-1.5 1.6 1.6 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.6 1.6 0 0 0 .3-1.8 1.6 1.6 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.6 1.6 0 0 0 1.5-1 1.6 1.6 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.6 1.6 0 0 0 1.8.3h0a1.6 1.6 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.6 1.6 0 0 0 1 1.5 1.6 1.6 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0-.3 1.8v0a1.6 1.6 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1z"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <div class="filters" id="filters" role="group" aria-label="Filter by who said it"></div>
+  <button class="shake" id="shakeBtn">Shake the jar · pull out a random one</button>
+  <div id="list"></div>
+
+  <footer class="maker">
+    <span class="maker-mark" aria-hidden="true"><span class="maker-logo"></span></span>
+    <span class="maker-text">An Organik Labs creation</span>
+  </footer>
+</main>
+
+<button class="fab" id="addBtn"><span style="font-size:22px;line-height:0">+</span> Catch a quote</button>
+
+<div class="scrim" id="scrim"></div>
+
+<!-- add / edit -->
+<section class="sheet" id="editSheet" role="dialog" aria-modal="true" aria-labelledby="editTitle">
+  <div class="grab"></div>
+  <h2 id="editTitle">Who said it?</h2>
+  <div class="row" id="whoChips"></div>
+  <label class="lbl" for="qText">What they said</label>
+  <textarea id="qText" placeholder="Daddy, are clouds just sky smoke?"></textarea>
+  <label class="lbl" for="qCtx">Where / why (optional)</label>
+  <input type="text" id="qCtx" placeholder="In the car, after the beach">
+  <label class="lbl" for="qDate">When</label>
+  <input type="date" id="qDate">
+  <div class="media">
+    <button class="mbtn" id="recBtn" type="button">🎙 Voice note</button>
+    <label class="mbtn" for="photoIn">📷 Photo</label>
+    <input type="file" id="photoIn" accept="image/*" hidden>
+  </div>
+  <div class="preview" id="preview"></div>
+  <div class="actions">
+    <button class="btn danger" id="delBtn" type="button" hidden>Delete</button>
+    <button class="btn ghost" id="cancelBtn" type="button">Cancel</button>
+    <button class="btn primary" id="saveBtn" type="button">Into the jar</button>
+  </div>
+</section>
+
+<!-- settings -->
+<section class="sheet" id="setSheet" role="dialog" aria-modal="true" aria-labelledby="setTitle">
+  <div class="grab"></div>
+  <h2 id="setTitle">Settings</h2>
+  <div class="setting">
+    <h3>The kids</h3>
+    <div id="kidRows"></div>
+    <button class="rm" id="addKid" type="button">+ Add someone</button>
+  </div>
+  <div class="setting">
+    <h3>Backup</h3>
+    <p class="small">Quotes live on this phone only. Save a backup file now and then (iCloud, Drive, your NAS), and use it to move the jar to a new phone.</p>
+    <div class="actions" style="margin-top:10px">
+      <button class="btn ghost" id="exportBtn" type="button">Save backup</button>
+      <label class="btn ghost" for="importIn" style="text-align:center">Restore</label>
+      <input type="file" id="importIn" accept="application/json,.json" hidden>
+    </div>
+    <p class="small" id="countLine" style="margin:10px 0 0"></p>
+  </div>
+  <div class="actions"><button class="btn primary" id="setDone" type="button">Done</button></div>
+</section>
+
+<!-- book -->
+<section class="sheet" id="bookSheet" role="dialog" aria-modal="true" aria-labelledby="bookTitle">
+  <div class="grab"></div>
+  <h2 id="bookTitle">Make the year book</h2>
+  <p class="small">Lays out a year of quotes as an A5 book, one quote after another with photos. Print it, or choose “Save as PDF” to send it to a print shop.</p>
+  <label class="lbl" for="bookYear">Year</label>
+  <select id="bookYear" style="width:100%;border:1px solid var(--line);background:var(--card);border-radius:14px;padding:12px 14px;font-size:16px"></select>
+  <label class="lbl" for="bookName">Title on the cover</label>
+  <input type="text" id="bookName" value="Things They Said">
+  <div class="actions">
+    <button class="btn ghost" id="bookCancel" type="button">Cancel</button>
+    <button class="btn primary" id="bookGo" type="button">Make the book</button>
+  </div>
+</section>
+
+<div class="pull" id="pull"></div>
+<div class="toast" id="toast"></div>
+<div id="book"></div>
+
+<script>
+/* ---------- storage (IndexedDB: quotes with photo/voice blobs) ---------- */
+const DB='quote-jar', STORE='quotes';
+let db;
+function openDB(){return new Promise((res,rej)=>{const r=indexedDB.open(DB,1);
+  r.onupgradeneeded=()=>r.result.createObjectStore(STORE,{keyPath:'id'});
+  r.onsuccess=()=>res(db=r.result);r.onerror=()=>rej(r.error);});}
+function tx(mode){return db.transaction(STORE,mode).objectStore(STORE);}
+const all=()=>new Promise(r=>{const q=tx('readonly').getAll();q.onsuccess=()=>r(q.result);});
+const put=o=>new Promise((r,j)=>{const q=tx('readwrite').put(o);q.onsuccess=r;q.onerror=()=>j(q.error);});
+const del=id=>new Promise(r=>{const q=tx('readwrite').delete(id);q.onsuccess=r;});
+
+function lsGet(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch{return d}}
+function lsSet(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch{}}
+
+let kids=lsGet('qj-kids',[{name:'Elliot',color:'#d66b3f'},{name:'Liam',color:'#7aa084'}]);
+let quotes=[], filter='All';
+
+const $=s=>document.querySelector(s);
+const esc=s=>String(s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const colorOf=n=>(kids.find(k=>k.name===n)||{color:'#e8b548'}).color;
+const urls=new Map(); // blob -> objectURL cache
+function urlFor(b){if(!b)return'';if(!urls.has(b))urls.set(b,URL.createObjectURL(b));return urls.get(b);}
+function toast(t){const e=$('#toast');e.textContent=t;e.classList.add('show');clearTimeout(e._t);e._t=setTimeout(()=>e.classList.remove('show'),1800);}
+const today=()=>{const d=new Date();d.setMinutes(d.getMinutes()-d.getTimezoneOffset());return d.toISOString().slice(0,10);};
+const fmtDate=s=>new Date(s+'T12:00').toLocaleDateString(undefined,{day:'numeric',month:'short',year:'numeric'});
+const fmtMonth=s=>new Date(s+'T12:00').toLocaleDateString(undefined,{month:'long',year:'numeric'});
+
+/* ---------- render ---------- */
+function renderFilters(){
+  const names=['All',...kids.map(k=>k.name)];
+  if(!names.includes(filter))filter='All';
+  $('#filters').innerHTML=names.map(n=>`<button class="chip" aria-pressed="${n===filter}" data-f="${esc(n)}">${n==='All'?'Everyone':esc(n)}</button>`).join('');
+}
+function cardHTML(q){
+  const who=q.who.map(n=>`<span class="who"><span class="dot" style="background:${colorOf(n)}"></span>${esc(n)}</span>`).join(' &amp; ');
+  return `<blockquote>${esc(q.text)||'<span style="color:var(--soft)">(voice note)</span>'}</blockquote>
+    ${q.ctx?`<div class="ctx">${esc(q.ctx)}</div>`:''}
+    ${q.photo?`<img src="${urlFor(q.photo)}" alt="">`:''}
+    ${q.audio?`<audio controls preload="none" src="${urlFor(q.audio)}"></audio>`:''}
+    <div class="meta">${who}<span>·</span><span>${fmtDate(q.date)}</span></div>`;
+}
+function render(){
+  renderFilters();
+  const shown=quotes.filter(q=>filter==='All'||q.who.includes(filter)).sort((a,b)=>b.date.localeCompare(a.date)||b.id.localeCompare(a.id));
+  $('#shakeBtn').hidden=shown.length<2;
+  if(!shown.length){$('#list').innerHTML=`<div class="empty"><p>The jar is empty.</p>Next time one of them says something brilliant, tap “Catch a quote”.</div>`;return;}
+  let html='',m='';
+  for(const q of shown){const mm=q.date.slice(0,7);if(mm!==m){m=mm;html+=`<div class="month">${fmtMonth(q.date)}</div>`;}
+    html+=`<article class="q" data-id="${q.id}">${cardHTML(q)}</article>`;}
+  $('#list').innerHTML=html;
+}
+$('#filters').onclick=e=>{const b=e.target.closest('[data-f]');if(!b)return;filter=b.dataset.f;render();};
+$('#list').onclick=e=>{if(e.target.closest('audio'))return;const c=e.target.closest('.q');if(c)openEdit(quotes.find(q=>q.id===c.dataset.id));};
+
+/* ---------- sheets ---------- */
+let openSheet=null;
+function show(el){openSheet=el;$('#scrim').classList.add('open');el.classList.add('open');}
+function hide(){if(openSheet)openSheet.classList.remove('open');$('#scrim').classList.remove('open');openSheet=null;stopRec();}
+$('#scrim').onclick=hide;
+
+/* ---------- add / edit ---------- */
+let draft=null;
+function openEdit(q){
+  draft=q?{...q,who:[...q.who]}:{id:Date.now().toString(36)+Math.random().toString(36).slice(2,6),who:[],text:'',ctx:'',date:today(),photo:null,audio:null};
+  if(!q&&filter!=='All')draft.who=[filter];
+  $('#editTitle').textContent=q?'Edit quote':'Who said it?';
+  $('#qText').value=draft.text;$('#qCtx').value=draft.ctx;$('#qDate').value=draft.date;
+  $('#delBtn').hidden=!q;$('#saveBtn').textContent=q?'Save':'Into the jar';
+  drawWho();drawPreview();show($('#editSheet'));
+  if(!q)setTimeout(()=>$('#qText').focus(),260);
+}
+function drawWho(){
+  $('#whoChips').innerHTML=kids.map(k=>`<button type="button" class="chip" data-w="${esc(k.name)}" aria-pressed="${draft.who.includes(k.name)}"><span class="dot" style="background:${k.color};margin-right:6px"></span>${esc(k.name)}</button>`).join('');
+}
+$('#whoChips').onclick=e=>{const b=e.target.closest('[data-w]');if(!b)return;const n=b.dataset.w;
+  draft.who=draft.who.includes(n)?draft.who.filter(x=>x!==n):[...draft.who,n];drawWho();};
+function drawPreview(){
+  let h='';
+  if(draft.photo)h+=`<img src="${urlFor(draft.photo)}" alt=""><button class="rm" data-rm="photo">Remove photo</button>`;
+  if(draft.audio)h+=`<audio controls src="${urlFor(draft.audio)}"></audio><button class="rm" data-rm="audio">Remove voice note</button>`;
+  $('#preview').innerHTML=h;
+}
+$('#preview').onclick=e=>{const b=e.target.closest('[data-rm]');if(b){draft[b.dataset.rm]=null;drawPreview();}};
+$('#cancelBtn').onclick=hide;
+$('#saveBtn').onclick=async()=>{
+  draft.text=$('#qText').value.trim();draft.ctx=$('#qCtx').value.trim();draft.date=$('#qDate').value||today();
+  if(!draft.who.length){toast('Tap who said it');return;}
+  if(!draft.text&&!draft.audio){toast('Type it or record it');return;}
+  stopRec();
+  await put(draft);const i=quotes.findIndex(q=>q.id===draft.id);i>=0?quotes[i]=draft:quotes.push(draft);
+  hide();render();toast('In the jar ✨');
+};
+$('#delBtn').onclick=async()=>{if(!confirm('Delete this quote for good?'))return;
+  await del(draft.id);quotes=quotes.filter(q=>q.id!==draft.id);hide();render();toast('Deleted');};
+
+/* photo: shrink to keep the jar light */
+$('#photoIn').onchange=async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;
+  try{const bmp=await createImageBitmap(f);const s=Math.min(1,1600/Math.max(bmp.width,bmp.height));
+    const c=document.createElement('canvas');c.width=Math.round(bmp.width*s);c.height=Math.round(bmp.height*s);
+    c.getContext('2d').drawImage(bmp,0,0,c.width,c.height);
+    draft.photo=await new Promise(r=>c.toBlob(r,'image/jpeg',.82));}catch{draft.photo=f;}
+  drawPreview();};
+
+/* voice */
+let rec=null,chunks=[],recTimer=null;
+async function startRec(){
+  try{const stream=await navigator.mediaDevices.getUserMedia({audio:true});
+    const type=['audio/mp4','audio/webm;codecs=opus','audio/webm'].find(t=>window.MediaRecorder&&MediaRecorder.isTypeSupported(t))||'';
+    rec=new MediaRecorder(stream,type?{mimeType:type}:undefined);chunks=[];
+    rec.ondataavailable=e=>e.data.size&&chunks.push(e.data);
+    rec.onstop=()=>{stream.getTracks().forEach(t=>t.stop());if(chunks.length){draft.audio=new Blob(chunks,{type:rec.mimeType||type||'audio/webm'});drawPreview();}rec=null;setRecBtn();};
+    rec.start();const t0=Date.now();setRecBtn(0);
+    recTimer=setInterval(()=>{const s=Math.floor((Date.now()-t0)/1000);setRecBtn(s);if(s>=120)stopRec();},250);
+  }catch{toast('Microphone not available');}
+}
+function stopRec(){clearInterval(recTimer);if(rec&&rec.state!=='inactive')rec.stop();}
+function setRecBtn(s){const b=$('#recBtn');if(rec&&s!==undefined){b.classList.add('rec');b.textContent=`■ Stop · ${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`;}else{b.classList.remove('rec');b.textContent='🎙 Voice note';}}
+$('#recBtn').onclick=()=>rec?stopRec():startRec();
+$('#addBtn').onclick=()=>openEdit(null);
+
+/* ---------- shake the jar ---------- */
+$('#shakeBtn').onclick=()=>{
+  const pool=quotes.filter(q=>filter==='All'||q.who.includes(filter));if(!pool.length)return;
+  const q=pool[Math.floor(Math.random()*pool.length)];
+  $('#pull').innerHTML=`<article class="q">${cardHTML(q)}</article>`;
+  $('#pull').classList.add('open');$('#scrim').classList.add('open');
+};
+$('#pull').onclick=e=>{if(e.target.closest('audio'))return;$('#pull').classList.remove('open');$('#scrim').classList.remove('open');};
+
+/* ---------- settings ---------- */
+function drawKids(){
+  $('#kidRows').innerHTML=kids.map((k,i)=>`<div class="kidrow"><input type="color" value="${k.color}" data-c="${i}" aria-label="Colour"><input type="text" value="${esc(k.name)}" data-n="${i}" aria-label="Name"><button class="rm" data-x="${i}" aria-label="Remove">✕</button></div>`).join('');
+  $('#countLine').textContent=`${quotes.length} quote${quotes.length===1?'':'s'} in the jar.`;
+}
+$('#setBtn').onclick=()=>{drawKids();show($('#setSheet'));};
+$('#addKid').onclick=()=>{kids.push({name:'',color:'#e8b548'});drawKids();};
+$('#kidRows').oninput=e=>{const t=e.target;if(t.dataset.c)kids[t.dataset.c].color=t.value;if(t.dataset.n)kids[t.dataset.n].name=t.value;};
+$('#kidRows').onclick=e=>{const b=e.target.closest('[data-x]');if(!b)return;kids.splice(+b.dataset.x,1);drawKids();};
+$('#setDone').onclick=async()=>{
+  // carry renames through to existing quotes
+  const old=lsGet('qj-kids',[]);kids=kids.filter(k=>k.name.trim()).map(k=>({...k,name:k.name.trim()}));
+  for(let i=0;i<Math.min(old.length,kids.length);i++){const a=old[i].name,b=kids[i].name;if(a&&b&&a!==b){
+    for(const q of quotes)if(q.who.includes(a)){q.who=q.who.map(x=>x===a?b:x);await put(q);}}}
+  lsSet('qj-kids',kids);hide();render();};
+
+const b64=b=>new Promise(r=>{const f=new FileReader();f.onload=()=>r(f.result);f.readAsDataURL(b);});
+const unb64=async s=>s?(await fetch(s)).blob():null;
+$('#exportBtn').onclick=async()=>{
+  const out=[];for(const q of quotes)out.push({...q,photo:q.photo?await b64(q.photo):null,audio:q.audio?await b64(q.audio):null});
+  const blob=new Blob([JSON.stringify({app:'quote-jar',v:1,kids,quotes:out})],{type:'application/json'});
+  const name=`quote-jar-${today()}.json`;
+  const file=new File([blob],name,{type:'application/json'});
+  if(navigator.canShare&&navigator.canShare({files:[file]})){try{await navigator.share({files:[file],title:'Quote Jar backup'});return;}catch(e){if(e.name==='AbortError')return;}}
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;a.click();
+};
+$('#importIn').onchange=async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;
+  try{const data=JSON.parse(await f.text());if(data.app!=='quote-jar')throw 0;
+    let n=0;for(const q of data.quotes){if(quotes.some(x=>x.id===q.id))continue;
+      const o={...q,photo:await unb64(q.photo),audio:await unb64(q.audio)};await put(o);quotes.push(o);n++;}
+    for(const k of data.kids||[])if(!kids.some(x=>x.name===k.name))kids.push(k);lsSet('qj-kids',kids);
+    drawKids();render();toast(`Restored ${n} quote${n===1?'':'s'}`);
+  }catch{toast('That file isn’t a Quote Jar backup');}
+};
+
+/* ---------- year book ---------- */
+$('#bookBtn').onclick=()=>{
+  const years=[...new Set(quotes.map(q=>q.date.slice(0,4)))].sort().reverse();
+  if(!years.length){toast('Catch a few quotes first');return;}
+  $('#bookYear').innerHTML=years.map(y=>`<option>${y}</option>`).join('');show($('#bookSheet'));
+};
+$('#bookCancel').onclick=hide;
+$('#bookGo').onclick=async()=>{
+  const y=$('#bookYear').value;const list=quotes.filter(q=>q.date.startsWith(y)).sort((a,b)=>a.date.localeCompare(b.date));
+  const names=[...new Set(list.flatMap(q=>q.who))];
+  let h=`<div class="b-cover"><h1>${esc($('#bookName').value||'Things They Said')}</h1><p>${esc(names.join(' & '))} · ${y}</p></div>`,m='';
+  for(const q of list){const mm=q.date.slice(0,7);if(mm!==m){m=mm;h+=`<div class="b-month">${fmtMonth(q.date)}</div>`;}
+    h+=`<div class="b-q"><blockquote>“${esc(q.text)||'(a voice note)'}”</blockquote>${q.ctx?`<div class="b-ctx">${esc(q.ctx)}</div>`:''}<div class="b-who">— ${esc(q.who.join(' & '))}, ${fmtDate(q.date)}</div>${q.photo?`<img src="${urlFor(q.photo)}" alt="">`:''}</div>`;}
+  h+=`<div class="b-end">An Organik Labs creation</div>`;
+  $('#book').innerHTML=h;hide();
+  await Promise.all([...document.querySelectorAll('#book img')].map(i=>i.complete?0:new Promise(r=>{i.onload=i.onerror=r;})));
+  setTimeout(()=>window.print(),150);
+};
+
+/* ---------- start ---------- */
+(async()=>{
+  await openDB();quotes=await all();render();
+  if(navigator.storage&&navigator.storage.persist)navigator.storage.persist().catch(()=>{});
+  if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
+})();
+</script>
+</body>
+</html>
