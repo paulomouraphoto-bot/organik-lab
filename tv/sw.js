@@ -1,5 +1,5 @@
 // Offline support for Telly. Page is network-first; assets cache-first.
-const CACHE = 'telly-v1';
+const CACHE = 'telly-v2';
 const CORE = ['./', './manifest.webmanifest', './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png', './icons/organik-mark.png'];
 
 self.addEventListener('install', e => {

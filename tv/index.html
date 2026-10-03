@@ -99,6 +99,28 @@ button,input{font:inherit;color:inherit}
 .maker-mark{filter:drop-shadow(0 -1px 0 rgba(0,0,0,.85)) drop-shadow(0 1.5px 0 rgba(255,255,255,.16)) drop-shadow(0 0 1px rgba(0,0,0,.5))}
 .maker-logo{display:block;width:38px;height:42px;background:linear-gradient(180deg,#4a4b50,#3a3b40);-webkit-mask:url(icons/organik-mark.png) center/contain no-repeat;mask:url(icons/organik-mark.png) center/contain no-repeat}
 .maker-text{font-family:var(--f-flap);font-weight:700;font-size:12px;letter-spacing:.32em;text-transform:uppercase;color:#4c4d52;text-shadow:0 -1px 0 rgba(0,0,0,.85),0 1.5px 0 rgba(255,255,255,.14)}
+
+/* custom lists */
+.seg button.add{color:var(--amber)}
+.sheet{position:fixed;left:0;right:0;bottom:0;max-width:640px;margin:0 auto;background:var(--panel);border:1px solid var(--edge);border-bottom:0;border-radius:22px 22px 0 0;
+  padding:18px 18px max(18px,env(safe-area-inset-bottom));transform:translateY(105%);transition:transform .25s;z-index:11;max-height:90vh;overflow-y:auto}
+.sheet.open{transform:none}
+.scrim{position:fixed;inset:0;background:rgba(0,0,0,.55);opacity:0;pointer-events:none;transition:opacity .2s;z-index:10}
+.scrim.open{opacity:1;pointer-events:auto}
+.sheet h2{font-family:var(--f-flap);font-weight:700;font-size:20px;letter-spacing:.18em;text-transform:uppercase;margin:0 0 6px}
+.sheet p{color:var(--muted);font-size:14px;line-height:1.45;margin:0 0 10px}
+.sheet label{display:block;font-family:var(--f-flap);font-weight:600;font-size:12px;letter-spacing:.22em;text-transform:uppercase;color:var(--muted);margin:14px 0 6px}
+.sheet input[type=text],.sheet input[type=url]{width:100%;background:var(--housing);border:1px solid var(--edge);border-radius:10px;padding:12px;font-size:16px}
+.sheet .row{display:flex;gap:8px;margin-top:16px}
+.sheet .row .mode{flex:1;text-align:center}
+.lists{display:flex;flex-direction:column;gap:6px;margin-top:6px}
+.lists div{display:flex;justify-content:space-between;align-items:center;background:var(--flap-lo);border:1px solid #2f3034;border-radius:8px;padding:8px 10px;font-size:14px}
+.lists button{background:none;border:0;color:#e0805f;cursor:pointer;font-family:var(--f-flap);letter-spacing:.12em;text-transform:uppercase}
+.msg{color:#e0805f;font-size:14px;min-height:1.2em;margin-top:10px}
+.scanbar{display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;margin-top:-6px}
+.scanbar span{font-family:var(--f-flap);font-weight:600;font-size:13px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted)}
+.scanbar b{color:var(--teal);font-weight:700}.scanbar i{font-style:normal;color:#e0805f;font-weight:700}
+.ch.ok .logo{box-shadow:0 0 0 2px var(--teal)}
 @media (max-width:520px){.t{width:20px;height:32px;font-size:21px}.grid{grid-template-columns:1fr 1fr}}
 @media (prefers-reduced-motion:reduce){.t{animation:none}}
 </style>
@@ -123,6 +145,7 @@ button,input{font:inherit;color:inherit}
       <input id="q" type="search" placeholder="Search channels" aria-label="Search channels" autocomplete="off">
     </div>
   </div>
+  <div class="scanbar" id="scanbar" hidden><button class="mode" id="scanBtn">Scan this list</button><span id="scanStat"></span></div>
   <div class="groups" id="groups"></div>
 
   <div class="grid" id="grid"></div>
@@ -134,6 +157,17 @@ button,input{font:inherit;color:inherit}
   </footer>
 </main>
 
+<div class="scrim" id="scrim"></div>
+<section class="sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="shT">
+  <h2 id="shT">Add a list</h2>
+  <p>Load any M3U playlist by link or file. It stays on this device only. Portal + MAC address logins aren’t supported, and channels on plain “http” links can’t play here.</p>
+  <label for="lName">Name</label><input type="text" id="lName" placeholder="My list" maxlength="20">
+  <label for="lUrl">Playlist link (https)</label><input type="url" id="lUrl" placeholder="https://…/playlist.m3u">
+  <label for="lFile">…or a playlist file</label><input type="file" id="lFile" accept=".m3u,.m3u8,audio/x-mpegurl,application/vnd.apple.mpegurl,text/plain">
+  <div class="msg" id="lMsg" role="alert"></div>
+  <div class="row"><button class="mode" id="lCancel">Cancel</button><button class="mode primary" id="lAdd">Add list</button></div>
+  <div id="lExisting"></div>
+</section>
 <script>
 /* ---------- sources: the open iptv-org lists (publicly available free-to-air streams) ---------- */
 const COUNTRIES=[['uk','UK'],['pt','Portugal'],['us','USA'],['es','Spain'],['fr','France'],['ie','Ireland']];
@@ -168,6 +202,9 @@ function parseM3U(text,cc){
 }
 async function load(cc){
   if(cc===FAV){channels=Object.values(favs);return}
+  if(isCustom(cc)&&!cache[cc]){const l=custom.find(x=>'my:'+x.id===cc);if(!l)throw new Error('gone');
+    let text=l.text;if(!text){const r=await fetch(l.url);if(!r.ok)throw new Error(r.status);text=await r.text();}
+    cache[cc]=parseM3U(text,'my');}
   if(!cache[cc]){const r=await fetch(listURL(cc));if(!r.ok)throw new Error(r.status);cache[cc]=parseM3U(await r.text(),cc);}
   channels=cache[cc];
 }
@@ -180,7 +217,10 @@ function flaps(text){
 
 /* ---------- lists ---------- */
 function drawCountries(){
-  $('#countries').innerHTML=[[FAV,'★ Saved'],...COUNTRIES].map(([c,n])=>`<button class="${c===FAV?'fav':''}" data-c="${c}" aria-pressed="${c===country}">${n}</button>`).join('');
+  const tab=([c,n])=>`<button class="${c===FAV?'fav':''}" data-c="${esc(c)}" aria-pressed="${c===country}">${esc(n)}</button>`;
+  $('#countries').innerHTML=tab([FAV,'★ Saved'])+'<button class="add" id="addList">+ List</button>'+[...custom.map(l=>['my:'+l.id,l.name]),...COUNTRIES].map(tab).join('');
+  const on=$('#countries [aria-pressed=true]');if(on)on.scrollIntoView({block:'nearest',inline:'nearest'});
+  $('#scanbar').hidden=country===FAV;$('#scanStat').textContent='';$('#scanBtn').textContent='Scan this list';scanning=false;
 }
 function drawGroups(){
   const gs=['All',...[...new Set(channels.map(c=>c.group))].sort()];
@@ -190,10 +230,10 @@ function drawGroups(){
 function drawGrid(){
   const q=query.toLowerCase();
   shown=channels.filter(c=>(group==='All'||c.group===group)&&(!q||c.name.toLowerCase().includes(q)))
-    .sort((a,b)=>(dead.has(a.url)-dead.has(b.url))||a.name.localeCompare(b.name));
+    .sort((a,b)=>(dead.has(a.url)-dead.has(b.url))||(alive.has(b.url)-alive.has(a.url))||a.name.localeCompare(b.name));
   $('#count').textContent=shown.length;
   if(!shown.length){$('#grid').innerHTML=`<div class="note" style="grid-column:1/-1">${country===FAV?'Tap the ☆ on any channel to save it here.':'No channels match.'}</div>`;$('#moreBtn').hidden=true;return;}
-  $('#grid').innerHTML=shown.slice(0,limit).map((c,i)=>`<div class="ch${dead.has(c.url)?' dead':''}" role="button" tabindex="0" data-i="${i}" aria-current="${current&&current.url===c.url}">
+  $('#grid').innerHTML=shown.slice(0,limit).map((c,i)=>`<div class="ch${dead.has(c.url)?' dead':''}${alive.has(c.url)?' ok':''}" role="button" tabindex="0" data-i="${i}" aria-current="${current&&current.url===c.url}">
     <span class="logo">${c.logo?`<img src="${esc(c.logo)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.replaceWith(document.createTextNode('${esc(c.name.slice(0,2)).toUpperCase()}'))">`:esc(c.name.slice(0,2)).toUpperCase()}</span>
     <span class="nm"><b>${esc(c.name)}</b><span>${esc(c.group)}${c.geo?' · geo':''}</span></span>
     <button class="star" data-s="${i}" aria-label="Save ${esc(c.name)}" aria-pressed="${!!favs[c.url]}">${favs[c.url]?'★':'☆'}</button></div>`).join('');
@@ -203,7 +243,7 @@ async function selectCountry(cc){
   country=cc;lsSet('telly-country',cc);group='All';limit=60;drawCountries();
   $('#grid').innerHTML='<div class="note" style="grid-column:1/-1">Tuning in…</div>';
   try{await load(cc);drawGroups();drawGrid();}
-  catch{$('#grid').innerHTML='<div class="note" style="grid-column:1/-1">Couldn’t load the channel list. Check your connection and try again.</div>';}
+  catch{$('#grid').innerHTML=`<div class="note" style="grid-column:1/-1">Couldn’t load ${isCustom(cc)?'this list. Its link may have stopped working':'the channel list. Check your connection and try again'}.</div>`;}
 }
 
 /* ---------- player ---------- */
@@ -222,7 +262,7 @@ async function play(c){
   stop();const g=gen;current=c;flaps(c.name);drawGrid();
   showStatic('Tuning…',c.name,false);
   watchdog=setTimeout(()=>fail(c,g),15000);
-  const ok=()=>{if(g!==gen)return;clearTimeout(watchdog);dead.delete(c.url);lsSet('telly-dead',[...dead]);
+  const ok=()=>{if(g!==gen)return;clearTimeout(watchdog);dead.delete(c.url);lsSet('telly-dead',[...dead]);alive.add(c.url);lsSet('telly-alive',[...alive].slice(-2000));
     $('#static').hidden=true;video.hidden=false;$('#live').hidden=false;drawGrid();};
   video.onplaying=ok;video.onerror=()=>fail(c,g);
   try{
@@ -237,8 +277,60 @@ async function play(c){
 function next(){if(!current)return;const i=shown.findIndex(c=>c.url===current.url);
   const rest=shown.slice(i+1).concat(shown.slice(0,i)).filter(c=>!dead.has(c.url));if(rest[0])play(rest[0]);}
 
+
+/* ---------- custom lists ---------- */
+let custom=ls('telly-lists',[]); // {id,name,url?,text?}
+const alive=new Set(ls('telly-alive',[]));
+const isCustom=c=>String(c).startsWith('my:');
+function saveCustom(){try{localStorage.setItem('telly-lists',JSON.stringify(custom));return true}catch{return false}}
+function openSheet(){ $('#lName').value='';$('#lUrl').value='';$('#lFile').value='';$('#lMsg').textContent='';
+  $('#lExisting').innerHTML=custom.length?'<label>Your lists</label><div class="lists">'+custom.map(l=>`<div><span>${esc(l.name)}</span><button data-del="${l.id}">Remove</button></div>`).join('')+'</div>':'';
+  $('#sheet').classList.add('open');$('#scrim').classList.add('open');}
+function closeSheet(){$('#sheet').classList.remove('open');$('#scrim').classList.remove('open');}
+$('#scrim').onclick=closeSheet;$('#lCancel').onclick=closeSheet;
+$('#lExisting').onclick=e=>{const b=e.target.closest('[data-del]');if(!b)return;const id=b.dataset.del;
+  custom=custom.filter(l=>l.id!==id);saveCustom();delete cache['my:'+id];if(country==='my:'+id)country='uk';openSheet();selectCountry(country);};
+$('#lAdd').onclick=async()=>{
+  const msg=$('#lMsg'),url=$('#lUrl').value.trim(),file=$('#lFile').files[0];
+  const name=($('#lName').value.trim()||(file?file.name.replace(/\.m3u8?$/i,''):'My list')).slice(0,20);
+  msg.textContent='';let text='';
+  try{
+    if(file){text=await file.text();}
+    else if(url){
+      if(!/^https:\/\//i.test(url)){msg.textContent='That link isn’t https, so a secure page can’t open it. Download the file and add it here instead.';return;}
+      try{const r=await fetch(url);if(!r.ok)throw new Error(r.status);text=await r.text();}
+      catch{msg.textContent='Couldn’t read that link from here. The server may block web apps. Try downloading the file and adding it instead.';return;}
+    }else{msg.textContent='Add a link or a file.';return;}
+    if(!/#EXTINF/i.test(text)){msg.textContent='That doesn’t look like an M3U playlist.';return;}
+    const id=Date.now().toString(36);const entry={id,name,url:file?'':url,text:file?text:''};
+    custom.push(entry);if(!saveCustom()){custom.pop();msg.textContent='That file is too big to keep on this device.';return;}
+    cache['my:'+id]=parseM3U(text,'my');
+    const n=cache['my:'+id].length;closeSheet();await selectCountry('my:'+id);
+    if(!n)showStatic('Empty list','None of its channels can play in a browser (they’re all plain http or need special headers).',false);
+  }catch{msg.textContent='Something went wrong reading that list.';}
+};
+
+/* ---------- scan: check which channels answer from this device ---------- */
+let scanning=false;
+async function probe(c){
+  const ctl=new AbortController();const t=setTimeout(()=>ctl.abort(),7000);
+  try{const r=await fetch(c.url,{signal:ctl.signal});clearTimeout(t);if(!r.ok)return false;
+    const head=(await r.text()).slice(0,2000);return /#EXTM3U|#EXT-X|<MPD/i.test(head);}
+  catch{clearTimeout(t);return false}
+}
+async function scan(){
+  if(scanning){scanning=false;return}
+  scanning=true;$('#scanBtn').textContent='Stop';const list=shown.slice();let ok=0,bad=0,i=0;
+  const stat=()=>$('#scanStat').innerHTML=`<b>${ok}</b> working · <i>${bad}</i> off air · ${list.length-ok-bad} to go`;stat();
+  async function worker(){while(scanning&&i<list.length){const c=list[i++];
+    if(await probe(c)){ok++;alive.add(c.url);dead.delete(c.url)}else{bad++;dead.add(c.url);alive.delete(c.url)}stat();}}
+  await Promise.all(Array.from({length:6},worker));
+  scanning=false;$('#scanBtn').textContent='Scan again';
+  lsSet('telly-dead',[...dead].slice(-2000));lsSet('telly-alive',[...alive].slice(-2000));drawGrid();
+}
+$('#scanBtn').onclick=scan;
 /* ---------- events ---------- */
-$('#countries').onclick=e=>{const b=e.target.closest('[data-c]');if(b&&b.dataset.c!==country)selectCountry(b.dataset.c);};
+$('#countries').onclick=e=>{if(e.target.closest('#addList')){openSheet();return}const b=e.target.closest('[data-c]');if(b&&b.dataset.c!==country)selectCountry(b.dataset.c);};
 $('#groups').onclick=e=>{const b=e.target.closest('[data-g]');if(!b)return;group=b.dataset.g;limit=60;drawGroups();drawGrid();};
 $('#q').oninput=e=>{query=e.target.value;limit=60;drawGrid();};
 $('#moreBtn').onclick=()=>{limit+=60;drawGrid();};
@@ -252,7 +344,7 @@ $('#grid').onclick=e=>{
 $('#grid').onkeydown=e=>{if((e.key==='Enter'||e.key===' ')&&e.target.matches('[data-i]')){e.preventDefault();play(shown[+e.target.dataset.i]);}};
 
 flaps('Telly');
-selectCountry(country===FAV||COUNTRIES.some(([c])=>c===country)?country:'uk');
+selectCountry(country===FAV||COUNTRIES.some(([c])=>c===country)||custom.some(l=>'my:'+l.id===country)?country:'uk');
 if('serviceWorker' in navigator)addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
 </script>
 </body>
