@@ -1,0 +1,673 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Daily Deck</title>
+<meta name="description" content="Calm news, one card at a time. Swipe left for more like it, right for less.">
+<meta name="theme-color" content="#141517">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/favicon-32.png" sizes="32x32">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Daily Deck">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&family=Newsreader:opsz,wght@6..72,500;6..72,600&display=swap">
+<script>if ('serviceWorker' in navigator) addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));</script>
+<style>
+:root{
+  color-scheme:dark;
+  --bg:#141517;--panel:#1c1d20;--panel-2:#232428;--edge:#2c2d32;--ink:#f1ebdd;--muted:#8c8a84;--amber:#f4b63f;
+  --paper:#f3eee3;--paper-ink:#1d1e21;--paper-muted:#6f6b63;--paper-edge:#e2dccd;
+  --more:#3fae7a;--less:#e0665a;
+  --f-head:"Barlow Condensed","Arial Narrow",Arial,sans-serif;
+  --f-body:"Barlow","Helvetica Neue",Arial,sans-serif;
+  --f-news:"Newsreader",Georgia,"Times New Roman",serif;
+  --safe-t:env(safe-area-inset-top,0px);--safe-b:env(safe-area-inset-bottom,0px);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:16px;line-height:1.45;overflow:hidden;overscroll-behavior:none;
+  background-image:radial-gradient(120% 60% at 50% 0%,#1d1e22 0%,var(--bg) 60%)}
+button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer}
+button:focus-visible,a:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--amber);outline-offset:3px}
+
+.app{height:100%;max-width:520px;margin:0 auto;display:flex;flex-direction:column;padding:calc(var(--safe-t) + 12px) 16px calc(var(--safe-b) + 10px)}
+
+/* ---- top bar ---- */
+.top{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.brand{font-family:var(--f-head);font-weight:700;font-size:26px;letter-spacing:.06em;text-transform:uppercase;line-height:1;margin:0}
+.brand span{color:var(--amber)}
+.top-actions{display:flex;gap:6px}
+.iconbtn{width:40px;height:40px;border-radius:12px;display:grid;place-items:center;color:var(--muted);transition:color .2s,background .2s}
+.iconbtn:hover{color:var(--ink);background:var(--panel)}
+.iconbtn svg{width:20px;height:20px}
+.iconbtn.spin svg{animation:spin .9s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+.modes{margin-top:14px;display:grid;grid-template-columns:repeat(3,1fr);background:var(--panel);border:1px solid var(--edge);border-radius:14px;padding:4px;position:relative}
+.modes button{position:relative;z-index:1;padding:9px 4px;border-radius:10px;font-family:var(--f-head);font-weight:600;font-size:clamp(13px,3.8vw,15px);letter-spacing:.05em;white-space:nowrap;text-transform:uppercase;color:var(--muted);transition:color .25s;display:flex;align-items:center;justify-content:center;gap:6px}
+.modes button[aria-pressed="true"]{color:var(--paper-ink)}
+.modes .pill{position:absolute;top:4px;bottom:4px;left:4px;width:calc((100% - 8px)/3);border-radius:10px;background:var(--ink);transition:transform .35s cubic-bezier(.3,1.3,.5,1),background .35s}
+.modes[data-mode="bright"] .pill{transform:translateX(100%);background:#f7cf5b}
+.modes[data-mode="green"] .pill{transform:translateX(200%);background:#7fcf9a}
+
+.chips{margin:12px -16px 0;padding:0 16px 2px;display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;min-height:36px}
+.chips::-webkit-scrollbar{display:none}
+.chip{flex:none;display:flex;align-items:center;gap:7px;padding:7px 13px;border-radius:999px;border:1px solid var(--edge);background:transparent;color:var(--muted);font-size:14px;font-weight:500;transition:all .2s}
+.chip i{width:8px;height:8px;border-radius:50%;background:var(--c);opacity:.5;transition:opacity .2s}
+.chip[aria-pressed="true"]{color:var(--ink);border-color:color-mix(in srgb,var(--c) 55%,var(--edge));background:color-mix(in srgb,var(--c) 14%,transparent)}
+.chip[aria-pressed="true"] i{opacity:1}
+.chips-note{flex:1;align-self:center;color:var(--muted);font-size:13px;line-height:1.35;padding-left:2px}
+
+/* ---- deck ---- */
+.deck-wrap{flex:1;min-height:0;position:relative;margin-top:14px}
+.deck{position:absolute;inset:0}
+.card{position:absolute;inset:0 0 30px;border-radius:22px;background:var(--paper);color:var(--paper-ink);overflow:hidden;display:flex;flex-direction:column;
+  box-shadow:0 1px 0 rgba(255,255,255,.6) inset,0 18px 40px -12px rgba(0,0,0,.55),0 2px 6px rgba(0,0,0,.25);
+  transform-origin:50% 100%;will-change:transform;touch-action:none;user-select:none;-webkit-user-select:none;cursor:grab;
+  transition:transform .45s cubic-bezier(.2,.9,.25,1.15),opacity .3s,filter .3s}
+.card.dragging{transition:none;cursor:grabbing}
+.card[data-depth="1"]{transform:translateY(14px) scale(.955);filter:brightness(.82)}
+.card[data-depth="2"]{transform:translateY(27px) scale(.91);filter:brightness(.66)}
+.card[data-depth="3"]{transform:translateY(38px) scale(.87);opacity:0}
+.card[data-depth="1"],.card[data-depth="2"],.card[data-depth="3"]{pointer-events:none}
+
+.card .media{position:relative;flex:0 0 42%;background:var(--c);overflow:hidden}
+.card .media img{width:100%;height:100%;object-fit:cover;display:block;-webkit-user-drag:none}
+.card .media::after{content:"";position:absolute;inset:auto 0 0;height:40%;background:linear-gradient(transparent,rgba(0,0,0,.18))}
+.card.noimg .media{flex:0 0 auto;padding:22px 22px 18px;background:linear-gradient(135deg,var(--c),color-mix(in srgb,var(--c) 60%,#1d1e21))}
+.card.noimg .media::after{display:none}
+.card .kicker{display:none}
+.card.noimg .kicker{display:block;font-family:var(--f-head);font-weight:700;font-size:44px;line-height:.9;letter-spacing:.04em;text-transform:uppercase;color:rgba(255,255,255,.92)}
+.card.noimg .kicker small{display:block;font-size:13px;letter-spacing:.2em;margin-top:8px;opacity:.85;font-weight:600}
+.card .body{flex:1;min-height:0;display:flex;flex-direction:column;padding:18px 22px 16px}
+.meta{display:flex;align-items:center;gap:8px;font-family:var(--f-head);font-weight:600;font-size:13px;letter-spacing:.12em;text-transform:uppercase;color:var(--paper-muted);white-space:nowrap;overflow:hidden}
+.meta .cat{color:color-mix(in srgb,var(--c) 70%,#1d1e21);display:flex;align-items:center;gap:6px}
+.meta .cat::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--c)}
+.meta .sep{opacity:.5}
+.meta .src{overflow:hidden;text-overflow:ellipsis}
+.card h2{font-family:var(--f-news);font-weight:600;font-size:clamp(23px,6.4vw,29px);line-height:1.14;letter-spacing:-.005em;margin:10px 0 0;
+  display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:4;overflow:hidden;text-wrap:balance}
+.card.noimg h2{font-size:clamp(27px,7.6vw,34px);-webkit-line-clamp:5}
+.card.noimg .meta .cat{display:none}
+.card.noimg .meta .cat+.sep{display:none}
+.card .sum{margin:12px 0 0;color:#3d3c39;font-size:16px;line-height:1.5;flex:1;min-height:0;overflow:hidden;
+  -webkit-mask-image:linear-gradient(#000 70%,transparent);mask-image:linear-gradient(#000 70%,transparent)}
+.card .foot{display:flex;justify-content:space-between;align-items:center;padding-top:10px;border-top:1px solid var(--paper-edge);margin-top:8px;font-size:13px;color:var(--paper-muted)}
+.card .foot b{font-weight:600;color:var(--paper-ink)}
+
+.stamp{position:absolute;top:22px;padding:6px 12px 5px;border:3px solid;border-radius:10px;font-family:var(--f-head);font-weight:700;font-size:24px;letter-spacing:.1em;text-transform:uppercase;opacity:0;pointer-events:none;background:rgba(243,238,227,.92);z-index:2}
+.stamp.more{right:20px;color:var(--more);transform:rotate(10deg)}
+.stamp.less{left:20px;color:var(--less);transform:rotate(-10deg)}
+
+/* states */
+.state{position:absolute;inset:0 0 30px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:12px;padding:24px;border:1px dashed var(--edge);border-radius:22px;color:var(--muted)}
+.state h3{font-family:var(--f-head);font-weight:600;font-size:26px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink);margin:0}
+.state p{margin:0;max-width:30ch}
+.state .row{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:6px}
+.btn{padding:11px 18px;border-radius:12px;background:var(--panel-2);border:1px solid var(--edge);color:var(--ink);font-weight:600;font-size:15px}
+.btn.primary{background:var(--ink);color:var(--paper-ink);border-color:var(--ink)}
+.skeleton{position:absolute;inset:0 0 30px;border-radius:22px;background:var(--panel);overflow:hidden}
+.skeleton::before{content:"";position:absolute;inset:0;background:linear-gradient(100deg,transparent 30%,rgba(255,255,255,.05) 50%,transparent 70%);animation:shimmer 1.3s infinite;transform:translateX(-100%)}
+.skeleton .b{position:absolute;left:22px;right:22px;border-radius:8px;background:var(--panel-2)}
+@keyframes shimmer{to{transform:translateX(100%)}}
+
+/* ---- controls ---- */
+.controls{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:14px;padding:16px 4px 6px}
+.ctrl{display:flex;align-items:center;justify-content:center;gap:10px;height:58px;border-radius:18px;border:1px solid var(--edge);background:var(--panel);font-family:var(--f-head);font-weight:600;font-size:17px;letter-spacing:.1em;text-transform:uppercase;transition:transform .15s,background .2s,border-color .2s}
+.ctrl:active{transform:scale(.96)}
+.ctrl svg{width:22px;height:22px}
+.ctrl.more{color:var(--more)}
+.ctrl.less{color:var(--less)}
+.ctrl.more:hover{border-color:color-mix(in srgb,var(--more) 50%,var(--edge))}
+.ctrl.less:hover{border-color:color-mix(in srgb,var(--less) 50%,var(--edge))}
+.ctrl.undo{width:50px;height:50px;border-radius:50%;color:var(--muted)}
+.ctrl.undo:disabled{opacity:.35;cursor:default}
+.hint{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);padding:0 10px;letter-spacing:.02em}
+
+.maker{display:flex;align-items:center;justify-content:center;gap:8px;padding-top:8px}
+.maker-logo{width:13px;height:14px;background:#4c4d52;-webkit-mask:url(icons/organik-mark.png) center/contain no-repeat;mask:url(icons/organik-mark.png) center/contain no-repeat}
+.maker-text{font-family:var(--f-head);font-weight:700;font-size:10px;letter-spacing:.3em;text-transform:uppercase;color:#4c4d52}
+
+/* ---- sheets ---- */
+.scrim{position:fixed;inset:0;background:rgba(8,8,10,.6);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);opacity:0;pointer-events:none;transition:opacity .3s;z-index:10}
+.scrim.on{opacity:1;pointer-events:auto}
+.sheet{position:fixed;left:0;right:0;bottom:0;max-width:560px;margin:0 auto;max-height:92%;background:var(--paper);color:var(--paper-ink);border-radius:24px 24px 0 0;z-index:11;
+  transform:translateY(105%);transition:transform .4s cubic-bezier(.2,.9,.3,1);display:flex;flex-direction:column;overflow:hidden}
+.sheet.on{transform:none}
+.sheet.dark{background:var(--panel);color:var(--ink)}
+.grab{width:42px;height:5px;border-radius:3px;background:rgba(0,0,0,.18);margin:9px auto 0;flex:none}
+.sheet.dark .grab{background:rgba(255,255,255,.15)}
+.sheet .scroll{overflow-y:auto;overscroll-behavior:contain;padding:0 0 calc(var(--safe-b) + 18px)}
+.sheet .close{position:absolute;top:12px;right:12px;width:36px;height:36px;border-radius:50%;background:rgba(0,0,0,.35);color:#fff;display:grid;place-items:center;z-index:2}
+.sheet.dark .close{background:var(--panel-2)}
+.reader-img{width:100%;aspect-ratio:16/9;object-fit:cover;display:block;margin-top:10px}
+.reader-pad{padding:18px 24px 0}
+.reader h1{font-family:var(--f-news);font-weight:600;font-size:clamp(26px,7vw,34px);line-height:1.12;margin:10px 0 14px;text-wrap:balance}
+.reader .lede{font-family:var(--f-news);font-size:19px;line-height:1.55;color:#33322f;margin:0}
+.reader .tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:16px}
+.reader .tags span{font-size:12px;padding:4px 9px;border-radius:999px;background:#e7e0cf;color:#5b574f}
+.reader .go{display:flex;align-items:center;justify-content:center;gap:8px;margin:22px 0 0;padding:15px;border-radius:14px;background:var(--paper-ink);color:var(--paper);text-decoration:none;font-weight:600}
+.reader .note{font-size:13px;color:var(--paper-muted);text-align:center;margin:10px 0 0}
+.reader .judge{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}
+.reader .judge button{padding:13px;border-radius:14px;border:1.5px solid;font-weight:600;font-family:var(--f-head);letter-spacing:.1em;text-transform:uppercase;font-size:15px}
+.reader .judge .more{color:#2b8a5c;border-color:#a8d8bf}
+.reader .judge .less{color:#c24c40;border-color:#efbcb5}
+
+.taste{padding:14px 22px 0}
+.taste h2{font-family:var(--f-head);font-weight:600;font-size:26px;letter-spacing:.06em;text-transform:uppercase;margin:6px 0 4px}
+.taste .sub{color:var(--muted);margin:0 0 16px;font-size:15px}
+.taste h3{font-family:var(--f-head);font-weight:600;font-size:14px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin:20px 0 10px}
+.bars{display:flex;flex-direction:column;gap:8px}
+.bar{display:grid;grid-template-columns:110px 1fr 34px;align-items:center;gap:10px;font-size:14px}
+.bar .track{height:8px;border-radius:4px;background:var(--panel-2);position:relative;overflow:hidden}
+.bar .track::after{content:"";position:absolute;top:0;bottom:0;left:50%;width:1px;background:var(--edge)}
+.bar .fill{position:absolute;top:0;bottom:0;border-radius:4px}
+.bar .n{text-align:right;color:var(--muted);font-variant-numeric:tabular-nums}
+.words{display:flex;flex-wrap:wrap;gap:6px}
+.words span{padding:5px 10px;border-radius:999px;font-size:13px;border:1px solid var(--edge)}
+.words .up{color:var(--more);border-color:color-mix(in srgb,var(--more) 40%,var(--edge))}
+.words .down{color:var(--less);border-color:color-mix(in srgb,var(--less) 40%,var(--edge))}
+.empty-note{color:var(--muted);font-size:14px;margin:0}
+.taste .reset{margin-top:22px;width:100%}
+.taste .stats{display:flex;gap:10px}
+.taste .stats div{flex:1;background:var(--panel-2);border-radius:12px;padding:10px 12px}
+.taste .stats b{display:block;font-family:var(--f-head);font-size:26px;font-weight:600;line-height:1}
+.taste .stats span{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em}
+
+/* onboarding */
+.coach{position:absolute;inset:0 0 30px;z-index:5;border-radius:22px;background:rgba(15,15,17,.88);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;text-align:center;padding:24px;backdrop-filter:blur(2px)}
+.coach h3{font-family:var(--f-head);font-size:28px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;margin:0}
+.coach .ways{display:grid;grid-template-columns:1fr 1fr;gap:12px;width:100%;max-width:330px}
+.coach .way{border:1px solid var(--edge);border-radius:16px;padding:16px 10px;background:var(--panel)}
+.coach .way b{display:block;font-family:var(--f-head);font-size:20px;letter-spacing:.08em;text-transform:uppercase;margin-top:6px}
+.coach .way small{color:var(--muted);font-size:13px}
+.coach .way .arr{font-size:30px;line-height:1;display:inline-block}
+.coach .way.l{color:var(--more)} .coach .way.r{color:var(--less)}
+.coach .way.l .arr{animation:nudgeL 1.6s ease-in-out infinite}
+.coach .way.r .arr{animation:nudgeR 1.6s ease-in-out infinite}
+@keyframes nudgeL{50%{transform:translateX(-8px)}}
+@keyframes nudgeR{50%{transform:translateX(8px)}}
+.coach p{margin:0;color:var(--muted);max-width:30ch}
+
+.toast{position:fixed;left:50%;bottom:calc(var(--safe-b) + 112px);transform:translate(-50%,20px);background:var(--ink);color:var(--paper-ink);padding:10px 16px;border-radius:12px;font-size:14px;font-weight:500;opacity:0;transition:all .3s;pointer-events:none;z-index:20;white-space:nowrap}
+.toast.on{opacity:1;transform:translate(-50%,0)}
+
+@media (max-height:640px){.card .media{flex-basis:34%}.controls{padding-top:10px}.ctrl{height:50px}.maker{display:none}}
+@media (prefers-reduced-motion:reduce){*{transition-duration:.01ms!important;animation:none!important}}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <h1 class="brand">Daily <span>Deck</span></h1>
+    <div class="top-actions">
+      <button class="iconbtn" id="refreshBtn" aria-label="Refresh stories" title="Refresh">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></svg>
+      </button>
+      <button class="iconbtn" id="tasteBtn" aria-label="Your taste" title="Your taste">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <nav class="modes" id="modes" data-mode="news" aria-label="What to read">
+    <span class="pill" aria-hidden="true"></span>
+    <button data-mode="news" aria-pressed="true">News</button>
+    <button data-mode="bright" aria-pressed="false">Bright side</button>
+    <button data-mode="green" aria-pressed="false">Green</button>
+  </nav>
+
+  <div class="chips" id="chips" role="group" aria-label="Topics"></div>
+
+  <main class="deck-wrap">
+    <div class="deck" id="deck" aria-live="polite"></div>
+  </main>
+
+  <div class="controls">
+    <button class="ctrl more" id="moreBtn" aria-label="More like this">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 20.5s-7.5-4.6-7.5-10.2A4.3 4.3 0 0 1 12 7.6a4.3 4.3 0 0 1 7.5 2.7c0 5.6-7.5 10.2-7.5 10.2z"/></svg>More
+    </button>
+    <button class="ctrl undo" id="undoBtn" aria-label="Undo last swipe" disabled>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14 4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/></svg>
+    </button>
+    <button class="ctrl less" id="lessBtn" aria-label="Less like this">Less
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>
+    </button>
+  </div>
+  <div class="hint"><span>← swipe for more</span><span>tap to read</span><span>swipe for less →</span></div>
+  <footer class="maker"><span class="maker-logo" aria-hidden="true"></span><span class="maker-text">An Organik Labs creation</span></footer>
+</div>
+
+<div class="scrim" id="scrim"></div>
+
+<section class="sheet reader" id="reader" role="dialog" aria-modal="true" aria-label="Story">
+  <div class="grab"></div>
+  <button class="close" data-close aria-label="Close"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+  <div class="scroll" id="readerBody"></div>
+</section>
+
+<section class="sheet dark" id="taste" role="dialog" aria-modal="true" aria-label="Your taste">
+  <div class="grab"></div>
+  <button class="close" data-close aria-label="Close"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+  <div class="scroll"><div class="taste" id="tasteBody"></div></div>
+</section>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(() => {
+  'use strict';
+
+  // ---------- topics ----------
+  const GROUPS = {
+    world:       { label: 'World',        c: '#e07a5f' },
+    tech:        { label: 'Tech',         c: '#5aa9e6' },
+    science:     { label: 'Science',      c: '#9b8cf0' },
+    business:    { label: 'Business',     c: '#e3a83b' },
+    health:      { label: 'Health',       c: '#ef8aa4' },
+    culture:     { label: 'Culture',      c: '#c77dd8' },
+    sport:       { label: 'Sport',        c: '#9cc95a' },
+    environment: { label: 'Environment',  c: '#4fae7f' },
+    good:        { label: 'Good news',    c: '#f2c14e' },
+    wonders:     { label: 'Discoveries',  c: '#4cc3c7' },
+    green:       { label: 'Green',        c: '#4fbf74' },
+  };
+  const NEWS_CATS = ['world','tech','science','business','health','culture','sport','environment'];
+  const BRIGHT_CATS = ['good','wonders'];
+
+  const STOP = new Set(('the a an and or but of to in on at for from by with as is are was were be been has have had it its this that these those into over after before about new says say said will would could can more most than not out up how why what when who your you our their they them his her he she we us all just one two three first last year years day week month amid after under against while via vs per off also may might still back make makes made get gets got take takes show shows big small top best world news first-ever finally report reports study studies people around across inside during within behind every some many much like here there now today')
+    .split(' '));
+
+  // ---------- storage (best effort) ----------
+  const store = {
+    get(k, d) { try { const v = localStorage.getItem('dd.' + k); return v ? JSON.parse(v) : d; } catch { return d; } },
+    set(k, v) { try { localStorage.setItem('dd.' + k, JSON.stringify(v)); } catch {} },
+  };
+
+  const state = {
+    mode: store.get('mode', 'news'),
+    newsCats: store.get('newsCats', ['world','tech','science','culture']),
+    brightCats: store.get('brightCats', ['good','wonders']),
+    w: store.get('weights', { cat: {}, src: {}, kw: {} }),
+    seen: new Set(store.get('seen', [])),
+    counts: store.get('counts', { more: 0, less: 0, read: 0 }),
+    coached: store.get('coached', false),
+    pool: {},         // groupsKey -> items
+    queue: [],        // ordered items not yet swiped for current view
+    history: [],      // for undo
+    loading: false,
+    error: null,
+  };
+
+  const $ = s => document.querySelector(s);
+  const deckEl = $('#deck'), chipsEl = $('#chips'), modesEl = $('#modes');
+
+  // ---------- helpers ----------
+  const esc = s => String(s ?? '').replace(/[&<>"']/g, ch => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[ch]));
+  const ago = iso => {
+    const m = Math.max(1, Math.round((Date.now() - new Date(iso)) / 60000));
+    if (m < 60) return m + 'm ago';
+    const h = Math.round(m / 60); if (h < 24) return h + 'h ago';
+    const d = Math.round(h / 24); return d === 1 ? 'yesterday' : d + 'd ago';
+  };
+  const readMins = it => Math.max(1, Math.round(((it.summary || '').split(/\s+/).length) / 40));
+  const keywords = it => {
+    const words = (it.title + ' ' + (it.tags || []).join(' ')).toLowerCase()
+      .replace(/[’']s\b/g, '').match(/[a-zà-ÿ][a-zà-ÿ\-]{3,}/g) || [];
+    const out = []; for (const w of words) if (!STOP.has(w) && !out.includes(w)) out.push(w);
+    return out.slice(0, 8);
+  };
+  const buzz = ms => { try { navigator.vibrate && navigator.vibrate(ms); } catch {} };
+  let toastT;
+  const toast = msg => { const t = $('#toast'); t.textContent = msg; t.classList.add('on'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('on'), 1800); };
+
+  const activeGroups = () => state.mode === 'green' ? ['green'] : state.mode === 'bright' ? state.brightCats : state.newsCats;
+  const groupsKey = () => [...activeGroups()].sort().join(',');
+
+  // ---------- learning ----------
+  const score = it => {
+    const W = state.w;
+    const cat = W.cat[it.group] || 0;
+    const src = W.src[it.source] || 0;
+    let kw = 0; for (const k of keywords(it)) kw += W.kw[k] || 0;
+    kw = Math.max(-4, Math.min(4, kw));
+    const hours = (Date.now() - new Date(it.date)) / 3.6e6;
+    const fresh = 2 * Math.exp(-Math.max(0, hours) / 20);
+    const pic = it.image ? .25 : 0;
+    return 1.1 * cat + .6 * src + .7 * kw + fresh + pic + (it._j ??= Math.random() * .8);
+  };
+
+  const learn = (it, dir) => {
+    const W = state.w, d = dir === 'more' ? 1 : -1;
+    const bump = (obj, k, amt) => { obj[k] = Math.max(-12, Math.min(12, +(((obj[k] || 0) + amt).toFixed(2)))); };
+    bump(W.cat, it.group, d);
+    bump(W.src, it.source, d * .5);
+    for (const k of keywords(it)) bump(W.kw, k, d);
+    // keep the keyword list from growing forever
+    const ks = Object.keys(W.kw);
+    if (ks.length > 600) ks.sort((a, b) => Math.abs(W.kw[a]) - Math.abs(W.kw[b])).slice(0, ks.length - 500).forEach(k => delete W.kw[k]);
+    store.set('weights', W);
+  };
+  const unlearn = (it, dir) => learn(it, dir === 'more' ? 'less' : 'more');
+
+  // Order the queue: best score first, but don't let one topic take over the deck.
+  const buildQueue = () => {
+    const items = (state.pool[groupsKey()] || []).filter(it => !state.seen.has(it.id) && activeGroups().includes(it.group));
+    const scored = items.map(it => ({ it, s: score(it) })).filter(x => x.s > -4).sort((a, b) => b.s - a.s);
+    const out = [];
+    while (scored.length) {
+      const lastTwo = out.slice(-2).map(x => x.group);
+      let i = scored.findIndex(x => !(lastTwo.length === 2 && lastTwo[0] === x.it.group && lastTwo[1] === x.it.group));
+      if (i < 0) i = 0;
+      out.push(scored.splice(i, 1)[0].it);
+    }
+    state.queue = out;
+  };
+
+  // ---------- data ----------
+  const load = async (force = false) => {
+    const key = groupsKey();
+    if (!key) { state.queue = []; render(); return; }
+    if (state.pool[key] && !force) { buildQueue(); render(); return; }
+    state.loading = true; state.error = null; render();
+    $('#refreshBtn').classList.add('spin');
+    try {
+      const res = await fetch('api.php?groups=' + encodeURIComponent(key) + (force ? '&t=' + Date.now() : ''), { cache: force ? 'no-store' : 'default' });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const data = await res.json();
+      if (!Array.isArray(data.items)) throw new Error('Bad response');
+      state.pool[key] = data.items;
+      if (!data.items.length) state.error = 'No stories came back from the news sources just now.';
+    } catch (e) {
+      state.error = 'Couldn’t reach the news right now. Check your connection and try again.';
+    } finally {
+      state.loading = false;
+      $('#refreshBtn').classList.remove('spin');
+      if (key === groupsKey()) { buildQueue(); render(); }
+    }
+  };
+
+  // ---------- render ----------
+  const renderChips = () => {
+    modesEl.dataset.mode = state.mode;
+    modesEl.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', b.dataset.mode === state.mode));
+    if (state.mode === 'green') {
+      chipsEl.innerHTML = '<span class="chips-note">Only the good news for the planet — renewables, rewilding, clean-ups and wins for nature.</span>';
+      return;
+    }
+    const list = state.mode === 'news' ? NEWS_CATS : BRIGHT_CATS;
+    const on = state.mode === 'news' ? state.newsCats : state.brightCats;
+    chipsEl.innerHTML = list.map(g => `<button class="chip" style="--c:${GROUPS[g].c}" data-g="${g}" aria-pressed="${on.includes(g)}"><i></i>${GROUPS[g].label}</button>`).join('');
+  };
+
+  const cardHTML = (it, depth) => {
+    const g = GROUPS[it.group] || { label: it.group, c: '#888' };
+    const img = it.image ? `<img src="${esc(it.image)}" alt="" loading="${depth ? 'lazy' : 'eager'}" referrerpolicy="no-referrer" draggable="false">` : '';
+    return `<article class="card${it.image ? '' : ' noimg'}" data-id="${it.id}" data-depth="${depth}" style="--c:${g.c}" tabindex="${depth ? -1 : 0}" aria-label="${esc(it.title)}">
+      <div class="media">${img}<span class="kicker">${esc(g.label)}</span></div>
+      <span class="stamp more">More</span><span class="stamp less">Less</span>
+      <div class="body">
+        <div class="meta"><span class="cat">${esc(g.label)}</span><span class="sep">·</span><span class="src">${esc(it.source)}</span><span class="sep">·</span><span>${ago(it.date)}</span></div>
+        <h2>${esc(it.title)}</h2>
+        <p class="sum">${esc(it.summary)}</p>
+        <div class="foot"><span>${readMins(it)} min skim</span><b>Tap to read →</b></div>
+      </div>
+    </article>`;
+  };
+
+  const render = () => {
+    renderChips();
+    $('#undoBtn').disabled = !state.history.length;
+    const noTopics = !activeGroups().length;
+    const showCards = !state.loading && !noTopics && state.queue.length;
+    $('#moreBtn').disabled = $('#lessBtn').disabled = !showCards;
+
+    if (noTopics) {
+      deckEl.innerHTML = `<div class="state"><h3>Pick a topic</h3><p>Tap one or more topics above to fill your deck.</p></div>`;
+      return;
+    }
+    if (state.loading) {
+      deckEl.innerHTML = `<div class="skeleton"><div class="b" style="top:0;left:0;right:0;height:42%;border-radius:0"></div><div class="b" style="top:calc(42% + 22px);width:40%;height:12px"></div><div class="b" style="top:calc(42% + 50px);height:24px"></div><div class="b" style="top:calc(42% + 82px);width:70%;height:24px"></div><div class="b" style="top:calc(42% + 128px);height:12px"></div><div class="b" style="top:calc(42% + 150px);width:85%;height:12px"></div></div>`;
+      return;
+    }
+    if (state.error && !state.queue.length) {
+      deckEl.innerHTML = `<div class="state"><h3>Quiet for a moment</h3><p>${esc(state.error)}</p><div class="row"><button class="btn primary" data-act="retry">Try again</button></div></div>`;
+      return;
+    }
+    if (!state.queue.length) {
+      deckEl.innerHTML = `<div class="state"><h3>All caught up</h3><p>You’ve been through every fresh story here. New ones arrive through the day.</p>
+        <div class="row"><button class="btn primary" data-act="retry">Check for new</button><button class="btn" data-act="replay">See them again</button></div></div>`;
+      return;
+    }
+    const top = state.queue.slice(0, 4);
+    deckEl.innerHTML = top.map((it, i) => cardHTML(it, i)).reverse().join('') + (state.coached ? '' : coachHTML());
+    deckEl.querySelectorAll('.card img').forEach(img => img.addEventListener('error', () => {
+      const card = img.closest('.card'); card.classList.add('noimg'); img.remove();
+      const it = state.queue.find(x => x.id === card.dataset.id); if (it) it.image = null;
+    }, { once: true }));
+    const first = deckEl.querySelector('.card[data-depth="0"]');
+    if (first) attachDrag(first);
+  };
+
+  const coachHTML = () => `<div class="coach" id="coach">
+      <h3>How it works</h3>
+      <div class="ways">
+        <div class="way l"><span class="arr">←</span><b>More</b><small>Swipe left to see more like this</small></div>
+        <div class="way r"><span class="arr">→</span><b>Less</b><small>Swipe right to see less of it</small></div>
+      </div>
+      <p>Tap a card to read it. Your deck learns what you enjoy — nothing leaves this device.</p>
+      <button class="btn primary" data-act="coached">Got it</button>
+    </div>`;
+
+  // ---------- swiping ----------
+  const THRESH = 95;
+  let dragging = null;
+
+  function attachDrag(card) {
+    let sx = 0, sy = 0, dx = 0, dy = 0, t0 = 0, id = null;
+    const more = card.querySelector('.stamp.more'), less = card.querySelector('.stamp.less');
+    const paint = () => {
+      card.style.transform = `translate(${dx}px,${dy * .4}px) rotate(${dx * .055}deg)`;
+      more.style.opacity = Math.min(1, Math.max(0, -dx / THRESH));
+      less.style.opacity = Math.min(1, Math.max(0, dx / THRESH));
+    };
+    card.addEventListener('pointerdown', e => {
+      if (e.button !== 0 || dragging) return;
+      id = e.pointerId; sx = e.clientX; sy = e.clientY; dx = dy = 0; t0 = performance.now();
+      dragging = card; card.setPointerCapture(id); card.classList.add('dragging');
+    });
+    card.addEventListener('pointermove', e => {
+      if (e.pointerId !== id) return;
+      dx = e.clientX - sx; dy = e.clientY - sy; paint();
+    });
+    const end = e => {
+      if (e.pointerId !== id) return;
+      id = null; dragging = null; card.classList.remove('dragging');
+      const dt = performance.now() - t0, v = Math.abs(dx) / Math.max(dt, 1);
+      if (Math.abs(dx) < 6 && Math.abs(dy) < 6 && dt < 450) { card.style.transform = ''; openReader(card.dataset.id); return; }
+      if (Math.abs(dx) > THRESH || (v > .55 && Math.abs(dx) > 30)) { decide(dx < 0 ? 'more' : 'less', dx, dy); return; }
+      card.style.transform = ''; more.style.opacity = less.style.opacity = 0;
+    };
+    card.addEventListener('pointerup', end);
+    card.addEventListener('pointercancel', end);
+  }
+
+  // dir: 'more' (left) or 'less' (right)
+  function decide(dir, fromX = 0, fromY = 0) {
+    const it = state.queue[0]; if (!it) return;
+    const card = deckEl.querySelector(`.card[data-id="${it.id}"]`);
+    if (card) {
+      card.classList.remove('dragging');
+      card.style.transition = 'transform .38s cubic-bezier(.3,.6,.4,1), opacity .38s';
+      const x = (dir === 'more' ? -1 : 1) * (innerWidth * .9 + 200);
+      card.style.transform = `translate(${x}px,${fromY * .4 + 40}px) rotate(${(dir === 'more' ? -1 : 1) * 24}deg)`;
+      card.style.opacity = '0';
+      card.querySelector(`.stamp.${dir}`).style.opacity = 1;
+    }
+    buzz(dir === 'more' ? [8, 30, 8] : 12);
+    learn(it, dir);
+    state.seen.add(it.id); saveSeen();
+    state.counts[dir]++; store.set('counts', state.counts);
+    state.history.push({ it, dir }); if (state.history.length > 30) state.history.shift();
+    state.queue.shift();
+    // re-rank what's left so the deck reacts to this swipe straight away
+    const next = state.queue[0];
+    buildQueue();
+    if (next && state.queue[0] !== next) state.queue = [next, ...state.queue.filter(x => x !== next)];
+    // promote the next cards without rebuilding the one flying away
+    setTimeout(render, 260);
+    // let the next cards slide up immediately
+    deckEl.querySelectorAll('.card').forEach(c => { if (c !== card) { const d = +c.dataset.depth; c.dataset.depth = Math.max(0, d - 1); } });
+  }
+
+  const saveSeen = () => { const arr = [...state.seen]; store.set('seen', arr.slice(-2000)); if (arr.length > 2000) state.seen = new Set(arr.slice(-2000)); };
+
+  function undo() {
+    const last = state.history.pop(); if (!last) return;
+    unlearn(last.it, last.dir);
+    state.seen.delete(last.it.id); saveSeen();
+    state.counts[last.dir] = Math.max(0, state.counts[last.dir] - 1); store.set('counts', state.counts);
+    state.queue.unshift(last.it);
+    render();
+    const c = deckEl.querySelector('.card[data-depth="0"]');
+    if (c) { c.style.transition = 'none'; c.style.transform = `translate(${last.dir === 'more' ? -420 : 420}px,30px) rotate(${last.dir === 'more' ? -20 : 20}deg)`; c.offsetWidth; c.style.transition = ''; c.style.transform = ''; }
+    buzz(6);
+  }
+
+  // ---------- sheets ----------
+  const scrim = $('#scrim');
+  let openSheet = null;
+  const showSheet = el => { openSheet = el; el.classList.add('on'); scrim.classList.add('on'); el.querySelector('.scroll').scrollTop = 0; setTimeout(() => el.querySelector('[data-close]').focus(), 50); };
+  const hideSheet = () => { if (!openSheet) return; openSheet.classList.remove('on'); scrim.classList.remove('on'); openSheet = null; deckEl.querySelector('.card[data-depth="0"]')?.focus({ preventScroll: true }); };
+  scrim.addEventListener('click', hideSheet);
+  document.querySelectorAll('[data-close]').forEach(b => b.addEventListener('click', hideSheet));
+
+  // drag sheets down to close
+  document.querySelectorAll('.sheet').forEach(sh => {
+    let y0 = null, dy = 0;
+    sh.addEventListener('touchstart', e => { if (sh.querySelector('.scroll').scrollTop <= 0) { y0 = e.touches[0].clientY; dy = 0; } }, { passive: true });
+    sh.addEventListener('touchmove', e => { if (y0 == null) return; dy = e.touches[0].clientY - y0; if (dy > 0) { sh.style.transition = 'none'; sh.style.transform = `translateY(${dy}px)`; } }, { passive: true });
+    sh.addEventListener('touchend', () => { if (y0 == null) return; sh.style.transition = ''; sh.style.transform = ''; if (dy > 110) hideSheet(); y0 = null; });
+  });
+
+  function openReader(id) {
+    const it = state.queue.find(x => x.id === id); if (!it) return;
+    const g = GROUPS[it.group] || { label: it.group, c: '#888' };
+    let host = ''; try { host = new URL(it.link).hostname.replace(/^www\./, ''); } catch {}
+    $('#readerBody').innerHTML = `
+      ${it.image ? `<img class="reader-img" src="${esc(it.image)}" alt="" referrerpolicy="no-referrer">` : '<div style="height:44px"></div>'}
+      <div class="reader-pad" style="--c:${g.c}">
+        <div class="meta"><span class="cat">${esc(g.label)}</span><span class="sep">·</span><span class="src">${esc(it.source)}</span><span class="sep">·</span><span>${ago(it.date)}</span></div>
+        <h1>${esc(it.title)}</h1>
+        ${it.summary ? `<p class="lede">${esc(it.summary)}</p>` : ''}
+        ${it.tags && it.tags.length ? `<div class="tags">${it.tags.map(t => `<span>${esc(t)}</span>`).join('')}</div>` : ''}
+        <a class="go" href="${esc(it.link)}" target="_blank" rel="noopener noreferrer">Read the full story on ${esc(host || it.source)}
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17 17 7M8 7h9v9"/></svg></a>
+        <p class="note">Opens the original article from ${esc(it.source)}.</p>
+        <div class="judge"><button class="more" data-judge="more">♥ More</button><button class="less" data-judge="less">Less ✕</button></div>
+      </div>`;
+    $('#readerBody .reader-img')?.addEventListener('error', e => e.target.remove(), { once: true });
+    $('#readerBody .go').addEventListener('click', () => { state.counts.read++; store.set('counts', state.counts); });
+    $('#readerBody').querySelectorAll('[data-judge]').forEach(b => b.addEventListener('click', () => { hideSheet(); setTimeout(() => decide(b.dataset.judge), 220); }));
+    showSheet($('#reader'));
+  }
+
+  function openTaste() {
+    const W = state.w;
+    const allCats = Object.keys(GROUPS);
+    const catRows = allCats.filter(k => W.cat[k]).sort((a, b) => W.cat[b] - W.cat[a]);
+    const max = Math.max(4, ...catRows.map(k => Math.abs(W.cat[k])));
+    const bars = catRows.map(k => {
+      const v = W.cat[k], pct = Math.abs(v) / max * 50;
+      const style = v >= 0 ? `left:50%;width:${pct}%;background:var(--more)` : `right:50%;width:${pct}%;background:var(--less)`;
+      return `<div class="bar"><span>${GROUPS[k].label}</span><span class="track"><span class="fill" style="${style}"></span></span><span class="n">${v > 0 ? '+' : ''}${Math.round(v)}</span></div>`;
+    }).join('');
+    const kws = Object.entries(W.kw);
+    const up = kws.filter(([, v]) => v >= 2).sort((a, b) => b[1] - a[1]).slice(0, 14);
+    const down = kws.filter(([, v]) => v <= -2).sort((a, b) => a[1] - b[1]).slice(0, 14);
+    const srcs = Object.entries(W.src).filter(([, v]) => Math.abs(v) >= 1).sort((a, b) => b[1] - a[1]);
+    $('#tasteBody').innerHTML = `
+      <h2>Your taste</h2>
+      <p class="sub">What your swipes have taught the deck. It all stays on this device.</p>
+      <div class="stats"><div><b>${state.counts.more}</b><span>More</span></div><div><b>${state.counts.less}</b><span>Less</span></div><div><b>${state.counts.read}</b><span>Opened</span></div></div>
+      <h3>Topics</h3>${bars ? `<div class="bars">${bars}</div>` : '<p class="empty-note">Swipe a few cards and your topics will show up here.</p>'}
+      <h3>You lean into</h3>${up.length ? `<div class="words">${up.map(([k]) => `<span class="up">${esc(k)}</span>`).join('')}</div>` : '<p class="empty-note">Nothing yet.</p>'}
+      <h3>You’d rather skip</h3>${down.length ? `<div class="words">${down.map(([k]) => `<span class="down">${esc(k)}</span>`).join('')}</div>` : '<p class="empty-note">Nothing yet.</p>'}
+      ${srcs.length ? `<h3>Sources</h3><div class="words">${srcs.map(([k, v]) => `<span class="${v > 0 ? 'up' : 'down'}">${esc(k)}</span>`).join('')}</div>` : ''}
+      <button class="btn reset" id="resetTaste">Start fresh</button>`;
+    $('#resetTaste').addEventListener('click', () => {
+      if (!confirm('Forget everything the deck has learned and show all stories again?')) return;
+      state.w = { cat: {}, src: {}, kw: {} }; store.set('weights', state.w);
+      state.seen.clear(); saveSeen(); state.counts = { more: 0, less: 0, read: 0 }; store.set('counts', state.counts);
+      state.history = []; hideSheet(); buildQueue(); render(); toast('Fresh start');
+    });
+    showSheet($('#taste'));
+  }
+
+  // ---------- events ----------
+  modesEl.addEventListener('click', e => {
+    const b = e.target.closest('button[data-mode]'); if (!b || b.dataset.mode === state.mode) return;
+    state.mode = b.dataset.mode; store.set('mode', state.mode); state.history = [];
+    load();
+  });
+  chipsEl.addEventListener('click', e => {
+    const b = e.target.closest('.chip'); if (!b) return;
+    const list = state.mode === 'news' ? state.newsCats : state.brightCats;
+    const g = b.dataset.g, i = list.indexOf(g);
+    if (i >= 0) list.splice(i, 1); else list.push(g);
+    store.set(state.mode === 'news' ? 'newsCats' : 'brightCats', list);
+    load();
+  });
+  deckEl.addEventListener('click', e => {
+    const a = e.target.closest('[data-act]'); if (!a) return;
+    if (a.dataset.act === 'retry') load(true);
+    if (a.dataset.act === 'coached') { state.coached = true; store.set('coached', true); $('#coach')?.remove(); }
+    if (a.dataset.act === 'replay') {
+      (state.pool[groupsKey()] || []).forEach(it => state.seen.delete(it.id)); saveSeen(); buildQueue(); render();
+    }
+  });
+  $('#moreBtn').addEventListener('click', () => decide('more'));
+  $('#lessBtn').addEventListener('click', () => decide('less'));
+  $('#undoBtn').addEventListener('click', undo);
+  $('#refreshBtn').addEventListener('click', () => load(true));
+  $('#tasteBtn').addEventListener('click', openTaste);
+  deckEl.addEventListener('keydown', e => {
+    const c = e.target.closest('.card'); if (!c) return;
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openReader(c.dataset.id); }
+  });
+  addEventListener('keydown', e => {
+    if (e.key === 'Escape') { hideSheet(); return; }
+    if (openSheet || e.metaKey || e.ctrlKey || e.altKey || /input|textarea/i.test(e.target.tagName)) return;
+    if (e.key === 'ArrowLeft') { e.preventDefault(); decide('more'); }
+    else if (e.key === 'ArrowRight') { e.preventDefault(); decide('less'); }
+    else if (e.key.toLowerCase() === 'z' || e.key === 'Backspace') undo();
+  });
+  // refresh when coming back to the app after a while
+  let hiddenAt = 0;
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) hiddenAt = Date.now();
+    else if (hiddenAt && Date.now() - hiddenAt > 30 * 60e3) { state.pool = {}; load(); }
+  });
+
+  // demo data for local previews: ?demo
+  if (location.search.includes('demo')) {
+    const g = ['world','tech','science','culture','good','wonders','green'];
+    const demo = Array.from({ length: 24 }, (_, i) => ({
+      id: 'demo' + i, group: g[i % g.length], source: ['The Guardian','BBC News','Good News Network','NASA'][i % 4],
+      title: ['Coral reefs off Kenya bounce back after community-led protection','New battery chemistry charges an e-bike in six minutes','Astronomers spot water vapour around a nearby rocky planet','A forgotten library in Lisbon reopens after twenty years'][i % 4] + (i > 3 ? ' (' + i + ')' : ''),
+      summary: 'Researchers and local groups describe how a decade of patient work paid off, with results that surprised even the people involved. The project is now being copied in three other countries.',
+      link: 'https://example.com/' + i, image: i % 3 ? 'icons/icon-512.png' : null,
+      date: new Date(Date.now() - i * 3.6e6).toISOString(), tags: ['Oceans','Community'],
+    }));
+    window.fetch = async () => ({ ok: true, json: async () => ({ items: demo }) });
+  }
+
+  load();
+})();
+</script>
+</body>
+</html>
