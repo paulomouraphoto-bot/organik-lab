@@ -1,5 +1,5 @@
 // Offline support for Quote Jar. Page is network-first; assets cache-first.
-const CACHE = 'quote-jar-v1';
+const CACHE = 'quote-jar-v2';
 const CORE = ['./', './manifest.webmanifest', './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png', './icons/organik-mark.png'];
 
 self.addEventListener('install', e => {
