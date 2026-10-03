@@ -189,9 +189,12 @@ function parseM3U(text,cc){
     if(line.startsWith('#EXTINF')){
       const a=k=>{const m=line.match(new RegExp(k+'="([^"]*)"'));return m?m[1]:''};
       const name=line.slice(line.lastIndexOf(',')+1).trim();
-      meta={name:name.replace(/\s*\((\d+p|Geo-blocked|Not 24\/7)\)/gi,'').trim(),raw:name,logo:a('tvg-logo'),group:(a('group-title')||'General').split(';')[0]||'General',cc};
+      const q=(name.match(/\((\d+p)\)/)||[])[1]||'';
+      meta={name:name.replace(/\s*[\(\[](\d+p|Geo-blocked|Not 24\/7)[\)\]]/gi,'').trim(),raw:name,q,logo:a('tvg-logo'),group:(a('group-title')||'General').split(';')[0]||'General',cc};
       needsHeaders=false;
-    }else if(line.startsWith('#EXTVLCOPT')||line.startsWith('#KODIPROP')){needsHeaders=true;}
+    }else if(line.startsWith('#EXTVLCOPT')||line.startsWith('#KODIPROP')){
+      // a browser already sends its own user-agent, so only referrer/origin or DRM requirements rule a stream out
+      if(!/http-user-agent/i.test(line))needsHeaders=true;}
     else if(!line.startsWith('#')&&meta){
       // browsers block plain-http video on a secure page, and can't send the custom headers some streams need
       if(line.startsWith('https://')&&!needsHeaders)out.push({...meta,url:line,geo:/geo-blocked/i.test(meta.raw)});
@@ -235,7 +238,7 @@ function drawGrid(){
   if(!shown.length){$('#grid').innerHTML=`<div class="note" style="grid-column:1/-1">${country===FAV?'Tap the ☆ on any channel to save it here.':'No channels match.'}</div>`;$('#moreBtn').hidden=true;return;}
   $('#grid').innerHTML=shown.slice(0,limit).map((c,i)=>`<div class="ch${dead.has(c.url)?' dead':''}${alive.has(c.url)?' ok':''}" role="button" tabindex="0" data-i="${i}" aria-current="${current&&current.url===c.url}">
     <span class="logo">${c.logo?`<img src="${esc(c.logo)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.replaceWith(document.createTextNode('${esc(c.name.slice(0,2)).toUpperCase()}'))">`:esc(c.name.slice(0,2)).toUpperCase()}</span>
-    <span class="nm"><b>${esc(c.name)}</b><span>${esc(c.group)}${c.geo?' · geo':''}</span></span>
+    <span class="nm"><b>${esc(c.name)}</b><span>${esc(c.group)}${c.q?' · '+c.q:''}${c.geo?' · geo':''}</span></span>
     <button class="star" data-s="${i}" aria-label="Save ${esc(c.name)}" aria-pressed="${!!favs[c.url]}">${favs[c.url]?'★':'☆'}</button></div>`).join('');
   $('#moreBtn').hidden=shown.length<=limit;
 }
