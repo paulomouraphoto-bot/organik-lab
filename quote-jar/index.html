@@ -14,7 +14,7 @@
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:ital,wght@0,400;0,500;0,600;1,400&family=Cormorant+Garamond:ital,wght@0,600;0,700;1,600;1,700&family=Lora:ital,wght@0,500;1,400;1,500&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:ital,wght@0,400;0,500;0,600;1,400&family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,500;1,600&display=swap">
 <style>
 /* Organik Labs house style: one instrument panel, split-flap title, condensed uppercase labels.
    Three finishes: Dark (default), Light, and Maile (extra cute). */
@@ -44,16 +44,17 @@ html[data-theme=light]{
 }
 html[data-theme=maile]{
   color-scheme:light;
-  --housing:#e6e1cf; --panel:#f7f2e4; --panel-hi:#fbf8ee; --edge:#d8cdb0;
-  --flap:#5f7a55; --flap-lo:#4e6746; --flap-hi:#6f8b64; --flap-shadow:rgba(61,53,39,.3);
-  --card:#fffbf0; --card-edge:#e5dbc1;
-  --ink:#3d3527; --muted:#8a7f66; --accent:#b4643a; --accent-ink:#fffbf0;
-  --maker-logo:linear-gradient(180deg,#dcd2b8,#cec3a6); --maker-text:#d2c7aa;
-  --emboss:0 1px 0 rgba(255,255,255,.95),0 -1px 0 rgba(61,53,39,.15);
-  --scrim:rgba(61,53,39,.3); --r:18px; --r-lg:26px;
+  --housing:#eceee3; --panel:#f8f7f0; --panel-hi:#fbfaf5; --edge:#d9dccb;
+  --flap:#3f4a3a; --flap-lo:#3f4a3a; --flap-hi:#3f4a3a; --flap-shadow:rgba(63,74,58,.2);
+  --card:#fdfcf7; --card-edge:#e2e3d4;
+  --ink:#2f2c36; --muted:#86867a; --accent:#8f78b5; --accent-ink:#fdfcf7;
+  --sage:#9fb393; --sage-deep:#5e7055; --lav:#c8badf; --lav-soft:#e9e2f2; --moss:#3f4a3a;
+  --maker-logo:linear-gradient(180deg,#d8dacb,#cdd0bf); --maker-text:#cfd2c1;
+  --emboss:0 1px 0 rgba(255,255,255,.95),0 -1px 0 rgba(63,74,58,.12);
+  --scrim:rgba(47,44,54,.28); --r:14px; --r-lg:20px;
   --f-flap:"Cormorant Garamond",Georgia,serif;
   --f-ui:"Barlow","Helvetica Neue",Arial,sans-serif;
-  --f-quote:"Lora",Georgia,serif;
+  --f-quote:"Cormorant Garamond",Georgia,serif;
 }
 *{box-sizing:border-box}
 [hidden]{display:none!important}
@@ -179,39 +180,63 @@ html[data-theme=light] .maker-mark,html[data-theme=maile] .maker-mark{filter:dro
 .maker-logo{display:block;width:38px;height:42px;background:var(--maker-logo);-webkit-mask:url(icons/organik-mark.png) center/contain no-repeat;mask:url(icons/organik-mark.png) center/contain no-repeat}
 .maker-text{font-family:"Barlow Condensed",sans-serif;font-weight:700;font-size:12px;letter-spacing:.32em;text-transform:uppercase;color:var(--maker-text);text-shadow:var(--emboss)}
 
-/* ---------- Maile mode: woodland fairy storybook ---------- */
-html[data-theme=maile] .tile{border-radius:10px 10px 12px 12px;color:#f7f2e4;font-weight:700;font-style:italic;
-  background:linear-gradient(180deg,var(--flap-hi),var(--flap-lo));box-shadow:0 3px 0 #3f5539,0 6px 12px var(--flap-shadow)}
-html[data-theme=maile] .tile::before{display:none}
-html[data-theme=maile] .tile::after{display:none}
-html[data-theme=maile] .tile:nth-child(3n+1){transform:rotate(-3deg)}
-html[data-theme=maile] .tile:nth-child(3n+2){transform:rotate(2deg) translateY(2px)}
-html[data-theme=maile] .subtitle,html[data-theme=maile] .month,html[data-theme=maile] .sheet h2,html[data-theme=maile] .empty p{font-style:italic;letter-spacing:.14em;font-size:15px}
-html[data-theme=maile] .sheet h2{font-size:24px;text-transform:none;letter-spacing:.02em}
-html[data-theme=maile] .label,html[data-theme=maile] label.lbl,html[data-theme=maile] .q .meta,html[data-theme=maile] .seg button,html[data-theme=maile] .chip,
-html[data-theme=maile] .btn,html[data-theme=maile] .mbtn,html[data-theme=maile] .shake,html[data-theme=maile] .fab,html[data-theme=maile] .rm,html[data-theme=maile] .toast{font-family:"Barlow Condensed",sans-serif}
-html[data-theme=maile] .seg button[aria-pressed=true]{background:var(--flap);color:#f7f2e4}
-html[data-theme=maile] .chip{border-radius:999px}
-html[data-theme=maile] .q{border-radius:6px 22px 6px 22px;background:var(--card) radial-gradient(circle at 100% 0,rgba(95,122,85,.08),transparent 45%)}
-html[data-theme=maile] .q blockquote{font-style:italic;font-weight:500}
-html[data-theme=maile] .q::after{content:"";position:absolute;top:10px;right:12px;width:22px;height:22px;opacity:.75;
-  background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M3 12a9 6 0 0 1 18 0z' fill='%23b4643a'/%3E%3Ccircle cx='8' cy='9' r='1.3' fill='%23fffbf0'/%3E%3Ccircle cx='13' cy='7.5' r='1' fill='%23fffbf0'/%3E%3Ccircle cx='16.5' cy='10' r='1.2' fill='%23fffbf0'/%3E%3Cpath d='M10 12h4l.6 7a1 1 0 0 1-1 1h-3.2a1 1 0 0 1-1-1z' fill='%23efe4c8'/%3E%3C/svg%3E") center/contain no-repeat}
-html[data-theme=maile] .month::after{background:none;border-top:1px dashed var(--edge);height:0}
-html[data-theme=maile] .month::before{content:"❦";font-style:normal;color:var(--flap)}
-html[data-theme=maile] .fab{border-radius:999px;box-shadow:0 10px 24px -8px rgba(180,100,58,.6)}
-html[data-theme=maile] .device{box-shadow:0 26px 60px -26px rgba(61,53,39,.45),inset 0 1px 0 #fff}
-html[data-theme=maile] body{background:var(--housing) radial-gradient(ellipse at 50% -10%,rgba(232,200,110,.25),transparent 60%) no-repeat}
+/* ---------- Maile mode: botanical oracle card ---------- */
+html[data-theme=maile] body{background-color:var(--housing);
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .35 0 0 0 0 .33 0 0 0 0 .28 0 0 0 .09 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"),
+    radial-gradient(ellipse 70% 45% at 85% 8%,rgba(200,186,223,.45),transparent 70%),
+    radial-gradient(ellipse 60% 40% at 8% 92%,rgba(159,179,147,.4),transparent 70%),
+    radial-gradient(ellipse 50% 35% at 0% 30%,rgba(233,226,242,.6),transparent 70%);
+  background-attachment:fixed}
+html[data-theme=maile] .device{background:rgba(248,247,240,.8) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .35 0 0 0 0 .33 0 0 0 0 .28 0 0 0 .09 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");border:1px solid var(--edge);
+  box-shadow:0 24px 50px -30px rgba(63,74,58,.35);outline:1px solid var(--edge);outline-offset:-9px}
+html[data-theme=maile] .title{display:block;text-align:center}
+.oracle-head{display:flex;flex-direction:column;align-items:center;gap:2px;color:var(--sage-deep);padding-top:6px}
+.oracle-head svg{width:min(240px,70vw);height:auto;display:block}
+.oracle-head h1{margin:2px 0 0;font-family:"Cormorant Garamond",Georgia,serif;font-weight:600;font-style:italic;font-size:44px;line-height:1;color:var(--ink);letter-spacing:.01em}
+html[data-theme=maile] .subtitle{font-family:"Cormorant Garamond",serif;font-weight:600;font-size:13px;letter-spacing:.34em;color:var(--sage-deep);margin-top:-8px}
+html[data-theme=maile] .subtitle::before,html[data-theme=maile] .subtitle::after{content:"";display:inline-block;width:22px;height:1px;background:var(--sage);vertical-align:middle;margin:0 10px}
+html[data-theme=maile] .seg{background:transparent;border-color:var(--edge)}
+html[data-theme=maile] .seg button{font-family:"Barlow Condensed",sans-serif}
+html[data-theme=maile] .seg button[aria-pressed=true]{background:var(--moss);color:var(--panel)}
+html[data-theme=maile] .icon-btn{background:transparent;color:var(--sage-deep)}
+html[data-theme=maile] .label,html[data-theme=maile] label.lbl,html[data-theme=maile] .q .meta,html[data-theme=maile] .chip,html[data-theme=maile] .btn,
+html[data-theme=maile] .mbtn,html[data-theme=maile] .shake,html[data-theme=maile] .fab,html[data-theme=maile] .rm,html[data-theme=maile] .toast,html[data-theme=maile] .month{font-family:"Cormorant Garamond",Georgia,serif;font-weight:700}
+html[data-theme=maile] .chip{border-radius:999px;background:transparent;border-color:var(--edge);color:var(--sage-deep);font-size:15px;letter-spacing:.1em;padding:8px 14px}
+html[data-theme=maile] .chip[aria-pressed=true]{background:var(--lav-soft);border-color:var(--lav);color:var(--ink)}
+html[data-theme=maile] .shake{border-style:solid;border-color:var(--edge);color:var(--sage-deep);font-size:16px;letter-spacing:.22em}
+html[data-theme=maile] .shake::before{content:"☾  ";color:var(--accent)}
+html[data-theme=maile] .month{font-size:14px;letter-spacing:.3em;color:var(--sage-deep)}
+html[data-theme=maile] .month::after{background:linear-gradient(90deg,var(--sage),transparent);opacity:.6}
+html[data-theme=maile] .q{border-radius:10px;padding:22px 22px 16px;background:var(--card);border-color:var(--card-edge);box-shadow:0 1px 0 rgba(63,74,58,.05),0 12px 24px -20px rgba(63,74,58,.3)}
+html[data-theme=maile] .q::before{content:"";position:absolute;inset:6px;border:1px solid var(--card-edge);border-radius:6px;pointer-events:none}
+html[data-theme=maile] .q::after{content:"";position:absolute;top:12px;right:13px;width:16px;height:16px;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Cpath d='M12.5 2.5a7.5 7.5 0 1 0 5 13.1A6 6 0 0 1 12.5 2.5z' fill='none' stroke='%238f78b5' stroke-width='1.1'/%3E%3C/svg%3E") center/contain no-repeat;opacity:.9}
+html[data-theme=maile] .q blockquote{font-style:italic;font-weight:600;font-size:23px;line-height:1.25;color:var(--ink)}
+html[data-theme=maile] .q blockquote::before{content:"\201C";color:var(--sage)}
+html[data-theme=maile] .q blockquote::after{content:"\201D";color:var(--sage)}
+html[data-theme=maile] .q .ctx{font-family:"Cormorant Garamond",serif;font-size:16px;color:var(--muted)}
+html[data-theme=maile] .q .meta{font-size:14px;letter-spacing:.16em;border-top:1px solid var(--card-edge);padding-top:10px}
+html[data-theme=maile] .q img{border-radius:6px;filter:saturate(.9)}
+html[data-theme=maile] .fab{background:var(--moss);color:var(--panel);border-radius:999px;font-size:18px;letter-spacing:.2em;box-shadow:0 14px 28px -12px rgba(63,74,58,.6)}
+html[data-theme=maile] .fab::after{content:"☾";margin-left:4px;color:var(--lav)}
+html[data-theme=maile] .btn.primary{background:var(--moss);color:var(--panel)}
+html[data-theme=maile] .btn{font-size:16px}
+html[data-theme=maile] .sheet{background:var(--panel) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .35 0 0 0 0 .33 0 0 0 0 .28 0 0 0 .09 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
+html[data-theme=maile] .sheet h2{font-family:"Cormorant Garamond",serif;font-style:italic;font-weight:600;font-size:28px;text-transform:none;letter-spacing:0}
+html[data-theme=maile] textarea{font-family:"Cormorant Garamond",serif;font-style:italic;font-size:22px}
+html[data-theme=maile] textarea,html[data-theme=maile] input[type=text],html[data-theme=maile] input[type=date],html[data-theme=maile] select,html[data-theme=maile] .mbtn{background:var(--card);border-color:var(--card-edge)}
+html[data-theme=maile] .mbtn{color:var(--sage-deep);font-size:15px}
+html[data-theme=maile] .empty p{font-family:"Cormorant Garamond",serif;font-style:italic;text-transform:none;letter-spacing:0;font-size:26px}
+html[data-theme=maile] :focus-visible{outline-color:var(--accent)}
+html[data-theme=maile] textarea:focus,html[data-theme=maile] input:focus{outline:1px solid var(--lav);border-color:var(--lav)}
+html[data-theme=maile] .pull .q{min-height:260px;display:flex;flex-direction:column;justify-content:center;text-align:center;padding:40px 28px 22px;transform:scale(.92)}
+html[data-theme=maile] .pull.open .q{transform:none}
+html[data-theme=maile] .pull .q .meta{justify-content:center}
+/* the scattered botanicals behind everything */
 .hearts{position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:0;display:none}
 html[data-theme=maile] .hearts{display:block}
-.hearts .ff{position:absolute;width:6px;height:6px;border-radius:50%;background:#f3d27a;
-  box-shadow:0 0 8px 3px rgba(243,210,122,.7);animation:drift ease-in-out infinite alternate,glow 3s ease-in-out infinite}
-.hearts .leaf{position:absolute;top:-30px;color:#8aa27c;opacity:.6;animation:fall linear infinite}
-@keyframes drift{to{transform:translate(var(--dx),var(--dy))}}
-@keyframes glow{0%,100%{opacity:.25}50%{opacity:1}}
-@keyframes fall{to{transform:translate(40px,115vh) rotate(260deg)}}
-.burst{position:fixed;pointer-events:none;z-index:30;font-size:18px;animation:pop 1.1s ease-out forwards}
-.burst.dot{width:7px;height:7px;border-radius:50%;background:#f3d27a;box-shadow:0 0 10px 4px rgba(243,210,122,.8)}
-@keyframes pop{0%{opacity:1;transform:translate(0,0) scale(.5)}100%{opacity:0;transform:translate(var(--dx),var(--dy)) scale(1.1)}}
+.hearts svg{position:absolute;fill:none;stroke-linecap:round;stroke-linejoin:round}
+.burst{position:fixed;pointer-events:none;z-index:30;font-size:14px;animation:pop 1.2s ease-out forwards}
+@keyframes pop{0%{opacity:0;transform:translate(0,0) scale(.4)}20%{opacity:1}100%{opacity:0;transform:translate(var(--dx),var(--dy)) rotate(var(--rot)) scale(1)}}
 
 /* the book */
 #book{display:none}
@@ -243,7 +268,7 @@ html[data-theme=maile] .hearts{display:block}
     <div class="seg" role="group" aria-label="Look">
       <button data-theme-btn="dark">Dark</button>
       <button data-theme-btn="light">Light</button>
-      <button data-theme-btn="maile">Maile ❦</button>
+      <button data-theme-btn="maile">Maile ☾</button>
     </div>
     <button class="icon-btn" id="bookBtn" aria-label="Make the year book" title="Year book">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2V5z"/><path d="M4 19a2 2 0 0 1 2-2h13"/></svg>
@@ -516,36 +541,58 @@ $('#bookGo').onclick=async()=>{
   setTimeout(()=>window.print(),150);
 };
 
+
+/* line drawings for Maile mode */
+const SPRIG=(c,w)=>`<g stroke="${c}" stroke-width="${w}"><path d="M0 60 C10 40 20 25 40 6"/><path d="M8 46c-8-2-12-8-12-14 7 1 12 6 12 14z"/><path d="M14 36c8-1 13-6 14-13-8 1-13 6-14 13z"/><path d="M20 28c-7-3-10-9-9-15 6 2 10 8 9 15z"/><path d="M27 20c7 0 12-4 14-10-7 0-12 4-14 10z"/><path d="M33 13c-5-3-7-8-6-12 5 2 7 7 6 12z"/></g>`;
+const FOX=(c,w)=>`<g stroke="${c}" stroke-width="${w}"><path d="M-15 -4 L-12 -22 L-3 -11 L3 -11 L12 -22 L15 -4 C14 4 7 10 0 14 C-7 10 -14 4 -15 -4 Z"/><path d="M-11 -17 L-8 -10 M11 -17 L8 -10"/><path d="M-15 -4 C-9 -3 -5 2 0 9 C5 2 9 -3 15 -4"/><circle cx="-6" cy="-3" r=".9" fill="${c}"/><circle cx="6" cy="-3" r=".9" fill="${c}"/><path d="M-1.6 11 L0 12.6 L1.6 11"/></g>`;
+const MOON=(c,w,r=10)=>`<path d="M${r*.25} ${-r} A${r} ${r} 0 1 0 ${r*.95} ${r*.4} A${r*.8} ${r*.8} 0 0 1 ${r*.25} ${-r} Z" stroke="${c}" stroke-width="${w}"/>`;
+const EMBLEM=`<svg viewBox="0 0 240 92" aria-hidden="true" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <g transform="translate(120 20)">${MOON('#8f78b5',1.2,11)}</g>
+  <g fill="#8f78b5" stroke="none"><circle cx="92" cy="14" r="1.2"/><circle cx="148" cy="12" r="1.2"/><circle cx="80" cy="26" r=".9"/><circle cx="160" cy="24" r=".9"/></g>
+  <g transform="translate(120 62)">${FOX('#3f4a3a',1.3)}</g>
+  <g transform="translate(100 26) scale(-.9 .9)">${SPRIG('#7f9672',1.3)}</g>
+  <g transform="translate(140 26) scale(.9)">${SPRIG('#7f9672',1.3)}</g>
+  <path d="M30 86 H210" stroke="#c8badf" stroke-width="1"/><circle cx="120" cy="86" r="2" fill="#f8f7f0" stroke="#8f78b5" stroke-width="1"/>
+</svg>`;
+function phases(){const c='#a993c7';let g='';[0,.35,1,.35,0].forEach((f,i)=>{const x=i*22;
+  g+= f===1?`<circle cx="${x}" cy="0" r="6" stroke="${c}" stroke-width="1"/>`: f===0?`<circle cx="${x}" cy="0" r="6" stroke="${c}" stroke-width="1" stroke-dasharray="2 2.4"/>`
+   : `<circle cx="${x}" cy="0" r="6" stroke="${c}" stroke-width="1"/><path d="M${x+(i<2?-1:1)*0} -6 A6 6 0 0 ${i<2?0:1} ${x} 6" stroke="${c}" stroke-width="1"/><path d="M${x} -6 A3 6 0 0 ${i<2?1:0} ${x} 6" stroke="${c}" stroke-width="1"/>`;});return g;}
 /* ---------- look: dark / light / maile ---------- */
 const COPY={
   dark:{sub:'Things the boys said',fab:'Catch a quote',shake:'Shake the jar',saved:'In the jar',empty:'The jar is empty',save:'Into the jar',title:'QUOTE JAR',color:'#141517'},
   light:{sub:'Things the boys said',fab:'Catch a quote',shake:'Shake the jar',saved:'In the jar',empty:'The jar is empty',save:'Into the jar',title:'QUOTE JAR',color:'#e6e2d9'},
-  maile:{sub:'wonders from the woods',fab:'Catch a little wonder',shake:'Shake the firefly jar',saved:'Tucked into the jar',empty:'The jar is waiting',save:'Tuck it in',title:'QUOTE JAR',color:'#e6e1cf'}
+  maile:{sub:'Little oracles',fab:'Gather a quote',shake:'Draw a card',saved:'Gathered',empty:'The jar is quiet',save:'Gather it',title:'Quote Jar',color:'#eceee3'}
 };
 let theme=document.documentElement.dataset.theme||'dark';
 const T=()=>COPY[theme];
 function drawTitle(animate){
+  if(theme==='maile'){$('#title').innerHTML=`<div class="oracle-head">${EMBLEM}<h1>Quote Jar</h1></div>`;return;}
   $('#title').innerHTML=T().title.split('').map((c,i)=>c===' '?'<span class="gap"></span>':`<span class="tile${animate?' flip':''}" style="animation-delay:${i*45}ms">${c}</span>`).join('');
 }
 function drawHearts(){
   const h=$('#hearts');if(theme!=='maile'){h.innerHTML='';return;}
   if(h.childElementCount)return;
-  let h2='';for(let i=0;i<18;i++)h2+=`<span class="ff" style="left:${Math.random()*100}%;top:${20+Math.random()*80}%;--dx:${Math.random()*80-40}px;--dy:${Math.random()*-90}px;animation-duration:${6+Math.random()*6}s,${2+Math.random()*3}s;animation-delay:-${Math.random()*6}s,-${Math.random()*3}s"></span>`;
-  for(let i=0;i<5;i++)h2+=`<span class="leaf" style="left:${Math.random()*95}%;font-size:${14+Math.random()*10}px;animation-duration:${18+Math.random()*14}s;animation-delay:-${Math.random()*30}s">${['❦','❧','✿'][i%3]}</span>`;
-  h.innerHTML=h2;
+  h.innerHTML=
+   `<svg style="top:18px;left:50%;margin-left:-55px;opacity:.5" width="110" height="20" viewBox="-8 -10 104 20">${phases()}</svg>`+
+   `<svg style="bottom:-6px;left:-18px;opacity:.45;transform:rotate(8deg)" width="150" height="190" viewBox="-4 -4 50 66">${SPRIG('#7f9672',.7)}</svg>`+
+   `<svg style="top:120px;right:-22px;opacity:.38;transform:rotate(200deg)" width="120" height="150" viewBox="-4 -4 50 66">${SPRIG('#a993c7',.7)}</svg>`+
+   `<svg style="bottom:120px;right:14px;opacity:.28" width="70" height="70" viewBox="-20 -24 40 40">${FOX('#3f4a3a',.9)}</svg>`+
+   `<svg style="top:44%;left:10px;opacity:.35" width="34" height="34" viewBox="-12 -12 24 24">${MOON('#8f78b5',1,9)}</svg>`+
+   `<svg style="top:30%;right:30px;opacity:.5" width="60" height="60" viewBox="0 0 60 60"><g fill="#a993c7"><circle cx="8" cy="10" r="1.2"/><circle cx="40" cy="4" r="1"/><circle cx="52" cy="30" r="1.3"/><circle cx="22" cy="44" r=".9"/></g></svg>`;
 }
 function setTheme(t,animate){
   theme=t;document.documentElement.dataset.theme=t;try{localStorage.setItem('qj-theme',t)}catch{}
   document.querySelector('meta[name=theme-color]').content=T().color;
   document.querySelectorAll('[data-theme-btn]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.themeBtn===t));
   $('#subtitle').textContent=T().sub;$('#fabText').textContent=T().fab;$('#shakeBtn').textContent=T().shake;
-  drawTitle(animate);drawHearts();if(quotes)render();
+  $('#hearts').innerHTML='';drawTitle(animate);drawHearts();if(quotes)render();
 }
 document.querySelector('.seg').onclick=e=>{const b=e.target.closest('[data-theme-btn]');if(b&&b.dataset.themeBtn!==theme)setTheme(b.dataset.themeBtn,true);};
-function burst(x,y){if(theme!=='maile')return;
-  for(let i=0;i<14;i++){const s=document.createElement('span');const leaf=i%4===3;s.className='burst'+(leaf?'':' dot');if(leaf){s.textContent='❦';s.style.color='#6f8b64';}
-    const a=Math.random()*Math.PI*2,d=50+Math.random()*100;s.style.left=x+'px';s.style.top=y+'px';
-    s.style.setProperty('--dx',Math.cos(a)*d+'px');s.style.setProperty('--dy',Math.sin(a)*d-30+'px');document.body.appendChild(s);setTimeout(()=>s.remove(),1150);}}
+function burst(x,y){if(theme!=='maile')return;const g=['✦','☾','❀','✧','❦'],col=['#8f78b5','#7f9672','#c8badf','#5e7055'];
+  for(let i=0;i<12;i++){const s=document.createElement('span');s.className='burst';s.textContent=g[i%g.length];s.style.color=col[i%col.length];
+    const a=-Math.PI/2+(Math.random()-.5)*Math.PI*1.4,d=50+Math.random()*90;s.style.left=x+'px';s.style.top=y+'px';
+    s.style.setProperty('--dx',Math.cos(a)*d+'px');s.style.setProperty('--dy',Math.sin(a)*d+'px');s.style.setProperty('--rot',(Math.random()*120-60)+'deg');
+    document.body.appendChild(s);setTimeout(()=>s.remove(),1250);}}
 
 /* ---------- start ---------- */
 (async()=>{
